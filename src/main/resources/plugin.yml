@@ -1,0 +1,64 @@
+name: PvPKits
+version: 2.0.0
+main: com.pvpkits.PvPKitsPlugin
+api-version: '1.21'
+author: YourName
+description: Advanced PvP Kits plugin with MiniMessage, Coroutines, and Java 21 support
+website: https://github.com/yourname/pvpkits
+
+commands:
+  kit:
+    description: Open kit selection menu
+    usage: /kit [name]
+    aliases: [kits, k]
+  createkit:
+    description: Create a kit from your inventory
+    usage: /createkit <name>
+    permission: pvpkits.admin
+  deletekit:
+    description: Delete a kit
+    usage: /deletekit <name>
+    permission: pvpkits.admin
+  stats:
+    description: View player statistics
+    usage: /stats [player]
+    aliases: [statistics]
+  top:
+    description: View leaderboard
+    usage: /top [kills|kd|streak]
+    aliases: [leaderboard, lb]
+  arena:
+    description: Arena management commands
+    usage: /arena <create|delete|list|info> [name]
+    permission: pvpkits.admin
+  join:
+    description: Join an arena
+    usage: /join [arena]
+  leave:
+    description: Leave current arena
+    usage: /leave
+  queue:
+    description: Join the arena queue
+    usage: /queue
+  arenas:
+    description: List all arenas
+    usage: /arenas
+    aliases: [arenalist]
+  duel:
+    description: Duel commands
+    usage: /duel <queue|leave|info|stats> [kit]
+  duelqueue:
+    description: Quick join duel queue
+    usage: /duelqueue <kit>
+    aliases: [dq]
+
+permissions:
+  pvpkits.use:
+    description: Use kits
+    default: true
+  pvpkits.admin:
+    description: Admin commands
+    default: op
+  pvpkits.stats.others:
+    description: View other players' stats
+    default: op

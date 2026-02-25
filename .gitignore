@@ -1,0 +1,46 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Maven
+target/
+!target/PvPKits-*.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.class
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+out/
+bin/
+*.log
+
+# Test server (local only)
+test-server/
+
+# Scripts (local only)
+*.bat
+*.sh
+run
+run.bat
+update-plugin.bat
+quick-test.bat
+
+# Documentation (generated)
+INSTALL_GRADLE.txt
+QUICKSTART.md
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~

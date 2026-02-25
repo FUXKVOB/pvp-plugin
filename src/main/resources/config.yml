@@ -1,0 +1,70 @@
+# PvPKits Configuration v2.0 - Modern Edition
+
+# Lobby Settings
+lobby:
+  teleport-on-join: true
+  spawn:
+    world: lobby
+    x: 0
+    y: 64
+    z: 0
+    yaw: 0
+    pitch: 0
+
+# Nametag Settings
+nametag:
+  enabled: true
+  # Format: {name} {health} {ping} {max_health}
+  # Use \n for new line (prefix/suffix)
+  # Supports MiniMessage: <red>, <green>, <gradient:#ff0000:#00ff00>, etc.
+  format: "<gray>{name}\n{health} {ping}"
+  update-interval: 10  # ticks (10 = 0.5 seconds)
+
+# Stats Settings
+stats:
+  enabled: true
+  show-kill-message: true
+  gui-leaderboard: true
+  tracked-worlds: []  # Leave empty to track all worlds, or list: [world, world_pvp]
+  cleanup-on-quit: false
+
+# GUI Settings
+gui:
+  title: "<gradient:#ff0000:#ff6b6b>⚔ PvP Kits</gradient>"
+  rows: 6
+  items-per-page: 28
+  enable-sounds: true
+  enable-particles: true
+
+# Cooldown in seconds (0 = no cooldown)
+kit-cooldown: 60
+
+# Clear inventory before giving kit
+clear-inventory: true
+
+# Auto-respawn with kit
+auto-rekit-on-death: false
+
+# Sound effects
+sounds:
+  kit-select: "ENTITY_PLAYER_LEVELUP"
+  kit-cooldown: "ENTITY_VILLAGER_NO"
+  gui-click: "UI_BUTTON_CLICK"
+  page-turn: "ITEM_BOOK_PAGE_TURN"
+
+# Messages (supports MiniMessage format)
+messages:
+  prefix: "<dark_gray>[<red>⚔</red>]</dark_gray> "
+  kit-received: "<gradient:#00ff00:#00aa00>✓</gradient> <green>You received the {kit} kit!"
+  kit-cooldown: "<red>⏱ Cooldown: <yellow>{time}"
+  kit-not-found: "<red>✗ Kit not found!"
+  kit-created: "<green>✓ Kit <yellow>{kit} <green>created!"
+  kit-deleted: "<green>✓ Kit <yellow>{kit} <green>deleted!"
+  no-permission: "<red>✗ No permission!"
+  gui-footer: "<gray>Page {current}/{total} <dark_gray>| <gray>Use arrows to navigate"
+  # Killstreak broadcast messages
+  killstreak.5: "&6&l⚔ &e{0} &6is on a &e5 kill streak!"
+  killstreak.10: "&c&l⚔ &e{0} &cis on a &e10 kill streak! &lUNSTOPPABLE!"
+  killstreak.15: "&4&l⚔ &e{0} &4is on a &e15 kill streak! &lGODLIKE!"
+  killstreak.20: "&d&l⚔ &e{0} &dis on a &e20 kill streak! &lLEGENDARY!"
+

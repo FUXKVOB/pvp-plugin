@@ -1,0 +1,195 @@
+# PvP Kits for Minecraft 1.21.8
+# Icon format: MATERIAL (will use first item from kit if not specified)
+
+kits:
+  crystal:
+    display-name: "<gradient:#ff00ff:#aa00ff>⚡ Crystal PvP</gradient>"
+    icon: "END_CRYSTAL"
+    permission: "pvpkits.kit.crystal"
+    cooldown: 60
+    description:
+      - "&7Dominate with end crystals"
+      - "&7and netherite armor"
+      - ""
+      - "&e⚔ Difficulty: &cHard"
+      - "&e⭐ Style: &dExplosive"
+    items:
+      - "NETHERITE_SWORD{Enchantments:[{id:sharpness,lvl:5},{id:sweeping_edge,lvl:3},{id:unbreaking,lvl:3}]}"
+      - "END_CRYSTAL 64"
+      - "OBSIDIAN 64"
+      - "RESPAWN_ANCHOR 1"
+      - "GLOWSTONE 64"
+      - "NETHERITE_HELMET{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3},{id:blast_protection,lvl:4}]}"
+      - "NETHERITE_CHESTPLATE{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_LEGGINGS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_BOOTS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3},{id:feather_falling,lvl:4}]}"
+      - "TOTEM_OF_UNDYING 3"
+      - "GOLDEN_APPLE 32"
+      - "ENDER_PEARL 16"
+      
+  mace:
+    display-name: "<gradient:#ffa500:#ff6b00>🔨 Mace PvP</gradient>"
+    icon: "MACE"
+    permission: "pvpkits.kit.mace"
+    cooldown: 60
+    description:
+      - "&7Aerial combat specialist"
+      - "&7with devastating smash attacks"
+      - ""
+      - "&e⚔ Difficulty: &6Medium"
+      - "&e⭐ Style: &6Aerial"
+    items:
+      - "MACE{Enchantments:[{id:density,lvl:5},{id:breach,lvl:4},{id:wind_burst,lvl:3}]}"
+      - "ELYTRA{Enchantments:[{id:unbreaking,lvl:3}]}"
+      - "WIND_CHARGE 64"
+      - "NETHERITE_HELMET{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "DIAMOND_LEGGINGS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "DIAMOND_BOOTS{Enchantments:[{id:protection,lvl:4},{id:feather_falling,lvl:4}]}"
+      - "FIREWORK_ROCKET 64"
+      - "GOLDEN_APPLE 24"
+      - "ENDER_PEARL 8"
+      - "TOTEM_OF_UNDYING 1"
+      
+  sword:
+    display-name: "<gradient:#ff0000:#aa0000>⚔ Sword Master</gradient>"
+    icon: "NETHERITE_SWORD"
+    permission: "pvpkits.kit.sword"
+    cooldown: 60
+    description:
+      - "&7Classic sword combat"
+      - "&7with full netherite gear"
+      - ""
+      - "&e⚔ Difficulty: &aEasy"
+      - "&e⭐ Style: &cMelee"
+    items:
+      - "NETHERITE_SWORD{Enchantments:[{id:sharpness,lvl:5},{id:fire_aspect,lvl:2},{id:looting,lvl:3}]}"
+      - "BOW{Enchantments:[{id:power,lvl:5},{id:infinity,lvl:1},{id:flame,lvl:1}]}"
+      - "ARROW 1"
+      - "NETHERITE_HELMET{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_CHESTPLATE{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_LEGGINGS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_BOOTS{Enchantments:[{id:protection,lvl:4},{id:feather_falling,lvl:4}]}"
+      - "SHIELD{Enchantments:[{id:unbreaking,lvl:3}]}"
+      - "GOLDEN_APPLE 32"
+      - "ENDER_PEARL 16"
+      
+  axe:
+    display-name: "<gradient:#8b4513:#654321>🪓 Axe Warrior</gradient>"
+    icon: "NETHERITE_AXE"
+    permission: "pvpkits.kit.axe"
+    cooldown: 60
+    description:
+      - "&7High damage axe combat"
+      - "&7with shield breaking power"
+      - ""
+      - "&e⚔ Difficulty: &6Medium"
+      - "&e⭐ Style: &cBrutal"
+    items:
+      - "NETHERITE_AXE{Enchantments:[{id:sharpness,lvl:5},{id:efficiency,lvl:5},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_SWORD{Enchantments:[{id:sharpness,lvl:4}]}"
+      - "SHIELD{Enchantments:[{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_HELMET{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_CHESTPLATE{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_LEGGINGS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_BOOTS{Enchantments:[{id:protection,lvl:4},{id:feather_falling,lvl:4}]}"
+      - "GOLDEN_APPLE 24"
+      - "ENDER_PEARL 12"
+
+      
+  uhc:
+    display-name: "<gradient:#ffff00:#ffaa00>🏆 UHC Champion</gradient>"
+    icon: "GOLDEN_APPLE"
+    permission: "pvpkits.kit.uhc"
+    cooldown: 60
+    description:
+      - "&7Ultra Hardcore survival kit"
+      - "&7with golden apples and bow"
+      - ""
+      - "&e⚔ Difficulty: &6Medium"
+      - "&e⭐ Style: &eSurvival"
+    items:
+      - "DIAMOND_SWORD{Enchantments:[{id:sharpness,lvl:5},{id:unbreaking,lvl:3}]}"
+      - "BOW{Enchantments:[{id:power,lvl:5},{id:punch,lvl:2},{id:unbreaking,lvl:3}]}"
+      - "ARROW 64"
+      - "DIAMOND_HELMET{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "DIAMOND_CHESTPLATE{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "DIAMOND_LEGGINGS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "DIAMOND_BOOTS{Enchantments:[{id:protection,lvl:4},{id:feather_falling,lvl:4}]}"
+      - "GOLDEN_APPLE 64"
+      - "WATER_BUCKET 1"
+      - "LAVA_BUCKET 1"
+      - "COBWEB 16"
+      
+  potion:
+    display-name: "<gradient:#ff00ff:#8800ff>🧪 Potion Master</gradient>"
+    icon: "SPLASH_POTION"
+    permission: "pvpkits.kit.potion"
+    cooldown: 60
+    description:
+      - "&7Potion-based combat"
+      - "&7with splash potions"
+      - ""
+      - "&e⚔ Difficulty: &cHard"
+      - "&e⭐ Style: &5Alchemist"
+    items:
+      - "DIAMOND_SWORD{Enchantments:[{id:sharpness,lvl:5}]}"
+      - "SPLASH_POTION{Potion:strong_harming} 16"
+      - "SPLASH_POTION{Potion:strong_poison} 8"
+      - "SPLASH_POTION{Potion:strong_slowness} 8"
+      - "POTION{Potion:strong_strength} 3"
+      - "POTION{Potion:strong_swiftness} 3"
+      - "POTION{Potion:strong_healing} 8"
+      - "DIAMOND_HELMET{Enchantments:[{id:protection,lvl:4}]}"
+      - "DIAMOND_CHESTPLATE{Enchantments:[{id:protection,lvl:4}]}"
+      - "DIAMOND_LEGGINGS{Enchantments:[{id:protection,lvl:4}]}"
+      - "DIAMOND_BOOTS{Enchantments:[{id:protection,lvl:4},{id:feather_falling,lvl:4}]}"
+      - "GOLDEN_APPLE 16"
+      - "ENDER_PEARL 16"
+      
+  archer:
+    display-name: "<gradient:#00ff00:#008800>🏹 Master Archer</gradient>"
+    icon: "BOW"
+    permission: "pvpkits.kit.archer"
+    cooldown: 60
+    description:
+      - "&7Long-range bow specialist"
+      - "&7with tipped arrows"
+      - ""
+      - "&e⚔ Difficulty: &6Medium"
+      - "&e⭐ Style: &aRanged"
+    items:
+      - "BOW{Enchantments:[{id:power,lvl:5},{id:punch,lvl:2},{id:flame,lvl:1},{id:unbreaking,lvl:3}]}"
+      - "CROSSBOW{Enchantments:[{id:quick_charge,lvl:3},{id:piercing,lvl:4},{id:multishot,lvl:1}]}"
+      - "ARROW 64"
+      - "SPECTRAL_ARROW 32"
+      - "TIPPED_ARROW{Potion:strong_poison} 16"
+      - "DIAMOND_SWORD{Enchantments:[{id:sharpness,lvl:3}]}"
+      - "CHAINMAIL_HELMET{Enchantments:[{id:protection,lvl:3},{id:projectile_protection,lvl:4}]}"
+      - "CHAINMAIL_CHESTPLATE{Enchantments:[{id:protection,lvl:3},{id:projectile_protection,lvl:4}]}"
+      - "CHAINMAIL_LEGGINGS{Enchantments:[{id:protection,lvl:3},{id:projectile_protection,lvl:4}]}"
+      - "CHAINMAIL_BOOTS{Enchantments:[{id:protection,lvl:3},{id:feather_falling,lvl:4}]}"
+      - "GOLDEN_APPLE 16"
+      - "ENDER_PEARL 8"
+      
+  tank:
+    display-name: "<gradient:#0000ff:#000088>🛡 Tank</gradient>"
+    icon: "SHIELD"
+    permission: "pvpkits.kit.tank"
+    cooldown: 60
+    description:
+      - "&7Maximum defense build"
+      - "&7with heavy armor"
+      - ""
+      - "&e⚔ Difficulty: &aEasy"
+      - "&e⭐ Style: &9Defensive"
+    items:
+      - "NETHERITE_SWORD{Enchantments:[{id:sharpness,lvl:4},{id:knockback,lvl:2}]}"
+      - "SHIELD{Enchantments:[{id:unbreaking,lvl:3}]}"
+      - "NETHERITE_HELMET{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3},{id:thorns,lvl:3}]}"
+      - "NETHERITE_CHESTPLATE{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3},{id:thorns,lvl:3}]}"
+      - "NETHERITE_LEGGINGS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3},{id:thorns,lvl:3}]}"
+      - "NETHERITE_BOOTS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3},{id:feather_falling,lvl:4},{id:thorns,lvl:3}]}"
+      - "TOTEM_OF_UNDYING 5"
+      - "GOLDEN_APPLE 64"
+      - "ENCHANTED_GOLDEN_APPLE 3"
+      - "ENDER_PEARL 8"

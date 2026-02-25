@@ -1,0 +1,51 @@
+name: PvPKits
+version: 2.0.0
+main: com.pvpkits.PvPKitsPlugin
+api-version: '1.21'
+author: YourName
+description: Advanced PvP Kits plugin with MiniMessage, Coroutines, and Java 21 support
+website: https://github.com/yourname/pvpkits
+
+# Paper-specific configuration
+paper:
+  # Use modern plugin loading system
+  load-before:
+    - name: Vault
+  load-after:
+    - name: PlaceholderAPI
+    - name: WorldGuard
+
+# Permissions
+permissions:
+  pvpkits.use:
+    description: Use kits
+    default: true
+  pvpkits.admin:
+    description: Admin commands
+    default: op
+  pvpkits.bypass.cooldown:
+    description: Bypass kit cooldowns
+    default: op
+  pvpkits.bypass.permission:
+    description: Bypass kit permissions
+    default: op
+
+# Commands
+commands:
+  kit:
+    description: Open kit selection menu
+    usage: /kit [name]
+    aliases: [kits, k]
+    permission: pvpkits.use
+  createkit:
+    description: Create a kit from your inventory
+    usage: /createkit <name>
+    permission: pvpkits.admin
+  deletekit:
+    description: Delete a kit
+    usage: /deletekit <name>
+    permission: pvpkits.admin
+  reloadkits:
+    description: Reload kits configuration
+    usage: /reloadkits
+    permission: pvpkits.admin
