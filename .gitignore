@@ -44,3 +44,23 @@ QUICKSTART.md
 *.temp
 *.swp
 *~
+
+# JVM crash logs
+hs_err_pid*.log
+replay_pid*.log
+
+# Local databases / caches
+*.db
+*.sqlite
+*.db-journal
+
+# Local test servers inside repo
+server/
+run-server/
+plugins/
+
+# Node / frontend
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml

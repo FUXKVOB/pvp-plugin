@@ -1,20 +1,41 @@
 package com.pvpkits.stats
 
+import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.shynixn.mccoroutine.bukkit.launch
 import com.pvpkits.PvPKitsPlugin
 import com.pvpkits.database.DatabaseManager
+import com.pvpkits.utils.ComponentCache
 import com.pvpkits.utils.CoroutineUtils
 import com.pvpkits.utils.SchedulerUtils
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.Bukkit
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 /**
- * Manages player statistics with SQLite database backend and caching
+ * Manages player statistics with SQLite database backend and advanced caching
+ * 
+ * Best Practices 2026:
+ * - Caffeine cache for frequently accessed stats
+ * - Batch database operations
+ * - Async I/O operations
+ * - Memory-efficient data structures
+ * - Proper cleanup to prevent memory leaks
  */
 class StatsManager(private val plugin: PvPKitsPlugin) {
     
+    // Primary stats storage (always in memory for fast access)
     private val stats = ConcurrentHashMap<UUID, PlayerStats>()
+    
+    // Caffeine cache for leaderboard queries (expensive DB operations)
+    private val leaderboardCache: Cache<String, List<PlayerStats>> = Caffeine.newBuilder()
+        .maximumSize(10)
+        .expireAfterWrite(1, TimeUnit.MINUTES)
+        .recordStats()
+        .build()
+    
     private val dbManager = DatabaseManager(plugin)
     private var needsSave = false
     
@@ -178,7 +199,7 @@ class StatsManager(private val plugin: PvPKitsPlugin) {
     fun getStatsIfExists(uuid: UUID): PlayerStats? = stats[uuid]
     
     /**
-     * Record a kill
+     * Record a kill and invalidate leaderboard cache
      */
     fun recordKill(killer: UUID, killerName: String, victim: UUID, victimName: String) {
         val killerStats = getStats(killer, killerName)
@@ -189,7 +210,10 @@ class StatsManager(private val plugin: PvPKitsPlugin) {
         
         needsSave = true
         
-        // Broadcast killstreak milestones
+        // Invalidate leaderboard cache since stats changed
+        leaderboardCache.invalidateAll()
+        
+        // Broadcast killstreak milestones using cached components
         when (killerStats.currentKillstreak) {
             5 -> broadcastMessage("killstreak.5", killerName)
             10 -> broadcastMessage("killstreak.10", killerName)
@@ -199,12 +223,13 @@ class StatsManager(private val plugin: PvPKitsPlugin) {
     }
     
     /**
-     * Record a death (without killer - environmental)
+     * Record a death (without killer - environmental) and invalidate cache
      */
     fun recordDeath(uuid: UUID, playerName: String) {
         val playerStats = getStats(uuid, playerName)
         playerStats.addDeath()
         needsSave = true
+        leaderboardCache.invalidateAll()
     }
     
     /**
@@ -217,76 +242,82 @@ class StatsManager(private val plugin: PvPKitsPlugin) {
     }
     
     /**
-     * Get leaderboard sorted by kills (from database for accuracy)
+     * Get leaderboard sorted by kills (cached for performance)
      */
     fun getLeaderboard(limit: Int = 10): List<PlayerStats> {
-        // Use database for consistent ordering
-        return dbManager.executeSync { connection ->
-            val statement = connection.prepareStatement(
-                "SELECT * FROM player_stats ORDER BY kills DESC LIMIT ?"
-            )
-            statement.setInt(1, limit)
-            val resultSet = statement.executeQuery()
-            
-            val leaderboard = mutableListOf<PlayerStats>()
-            while (resultSet.next()) {
-                val uuid = UUID.fromString(resultSet.getString("uuid"))
-                // Use cached stats if available, otherwise create from DB
-                val stats = this.stats[uuid] ?: PlayerStats(
-                    uuid = uuid,
-                    playerName = resultSet.getString("player_name"),
-                    kills = resultSet.getInt("kills"),
-                    deaths = resultSet.getInt("deaths"),
-                    currentKillstreak = resultSet.getInt("current_killstreak"),
-                    bestKillstreak = resultSet.getInt("best_killstreak")
+        return leaderboardCache.get("kills:$limit") {
+            // Use database for consistent ordering
+            dbManager.executeSync { connection ->
+                val statement = connection.prepareStatement(
+                    "SELECT * FROM player_stats ORDER BY kills DESC LIMIT ?"
                 )
-                leaderboard.add(stats)
-            }
-            
-            resultSet.close()
-            statement.close()
-            leaderboard
-        } ?: stats.values.sortedByDescending { it.kills }.take(limit)
+                statement.setInt(1, limit)
+                val resultSet = statement.executeQuery()
+                
+                val leaderboard = mutableListOf<PlayerStats>()
+                while (resultSet.next()) {
+                    val uuid = UUID.fromString(resultSet.getString("uuid"))
+                    // Use cached stats if available, otherwise create from DB
+                    val stats = this.stats[uuid] ?: PlayerStats(
+                        uuid = uuid,
+                        playerName = resultSet.getString("player_name"),
+                        kills = resultSet.getInt("kills"),
+                        deaths = resultSet.getInt("deaths"),
+                        currentKillstreak = resultSet.getInt("current_killstreak"),
+                        bestKillstreak = resultSet.getInt("best_killstreak")
+                    )
+                    leaderboard.add(stats)
+                }
+                
+                resultSet.close()
+                statement.close()
+                leaderboard
+            } ?: stats.values.sortedByDescending { it.kills }.take(limit)
+        }!!
     }
     
     /**
-     * Get leaderboard sorted by K/D ratio
+     * Get leaderboard sorted by K/D ratio (cached)
      */
     fun getLeaderboardByKd(limit: Int = 10): List<PlayerStats> {
-        return stats.values
-            .filter { it.totalGames >= 10 }
-            .sortedByDescending { it.kdRatio }
-            .take(limit)
+        return leaderboardCache.get("kd:$limit") {
+            stats.values
+                .filter { it.totalGames >= 10 }
+                .sortedByDescending { it.kdRatio }
+                .take(limit)
+        }!!
     }
     
     /**
-     * Get leaderboard sorted by killstreak
+     * Get leaderboard sorted by killstreak (cached)
      */
     fun getLeaderboardByKillstreak(limit: Int = 10): List<PlayerStats> {
-        return dbManager.executeSync { connection ->
-            val statement = connection.prepareStatement(
-                "SELECT * FROM player_stats ORDER BY best_killstreak DESC LIMIT ?"
-            )
-            statement.setInt(1, limit)
-            val resultSet = statement.executeQuery()
-            
-            val leaderboard = mutableListOf<PlayerStats>()
-            while (resultSet.next()) {
-                val uuid = UUID.fromString(resultSet.getString("uuid"))
-                val stats = this.stats[uuid] ?: PlayerStats(
-                    uuid = uuid,
-                    playerName = resultSet.getString("player_name"),
-                    kills = resultSet.getInt("kills"),
-                    deaths = resultSet.getInt("deaths"),
-                    bestKillstreak = resultSet.getInt("best_killstreak")
+        return leaderboardCache.get("streak:$limit") {
+            dbManager.executeSync { connection ->
+                val statement = connection.prepareStatement(
+                    "SELECT * FROM player_stats ORDER BY best_killstreak DESC LIMIT ?"
                 )
-                leaderboard.add(stats)
-            }
-            
-            resultSet.close()
-            statement.close()
-            leaderboard
-        } ?: stats.values.sortedByDescending { it.bestKillstreak }.take(limit)
+                statement.setInt(1, limit)
+                val resultSet = statement.executeQuery()
+                
+                val leaderboard = mutableListOf<PlayerStats>()
+                while (resultSet.next()) {
+                    val uuid = UUID.fromString(resultSet.getString("uuid"))
+                    val stats = this.stats[uuid] ?: PlayerStats(
+                        uuid = uuid,
+                        playerName = resultSet.getString("player_name"),
+                        kills = resultSet.getInt("kills"),
+                        deaths = resultSet.getInt("deaths"),
+                        bestKillstreak = resultSet.getInt("best_killstreak")
+                    )
+                    leaderboard.add(stats)
+                }
+                
+                resultSet.close()
+                statement.close()
+                leaderboard
+            } ?: stats.values.sortedByDescending { it.bestKillstreak }.take(limit)
+        }!!
     }
     
     /**
@@ -324,16 +355,21 @@ class StatsManager(private val plugin: PvPKitsPlugin) {
     }
     
     /**
-     * Get memory statistics
+     * Get memory statistics including cache performance
      */
     fun getMemoryStats(): Map<String, Any> {
         val dbStats = dbManager.getPoolStats()
+        val cacheStats = leaderboardCache.stats()
+        
         return mapOf(
             "total_players" to stats.size,
             "total_kills" to stats.values.sumOf { it.kills },
             "total_deaths" to stats.values.sumOf { it.deaths },
             "db_pool_active" to (dbStats["active_connections"] ?: 0),
-            "db_pool_idle" to (dbStats["idle_connections"] ?: 0)
+            "db_pool_idle" to (dbStats["idle_connections"] ?: 0),
+            "leaderboard_cache_size" to leaderboardCache.estimatedSize(),
+            "leaderboard_cache_hit_rate" to cacheStats.hitRate(),
+            "leaderboard_cache_miss_rate" to cacheStats.missRate()
         )
     }
     
@@ -346,14 +382,23 @@ class StatsManager(private val plugin: PvPKitsPlugin) {
     
     private fun broadcastMessage(key: String, vararg args: String) {
         val message = plugin.config.getString("messages.$key") ?: return
-        var formatted = message
-        args.forEachIndexed { index, arg ->
-            formatted = formatted.replace("{${index}}", arg)
-        }
         
-        // Use MiniMessage if available, otherwise legacy colors
-        val component = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
-            .deserialize(formatted.replace("&", "§"))
+        // Use ComponentCache for better performance
+        val component = try {
+            ComponentCache.parseDynamic(
+                message,
+                Placeholder.unparsed("0", args.getOrNull(0) ?: ""),
+                Placeholder.unparsed("1", args.getOrNull(1) ?: "")
+            )
+        } catch (e: Exception) {
+            // Fallback to legacy format
+            var formatted = message
+            args.forEachIndexed { index, arg ->
+                formatted = formatted.replace("{${index}}", arg)
+            }
+            net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                .deserialize(formatted.replace("&", "§"))
+        }
         
         Bukkit.getOnlinePlayers().forEach { player ->
             player.sendMessage(component)

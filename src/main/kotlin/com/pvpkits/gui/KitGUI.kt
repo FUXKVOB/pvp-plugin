@@ -4,6 +4,9 @@ import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.pvpkits.Kit
 import com.pvpkits.PvPKitsPlugin
+import com.pvpkits.utils.ComponentCache
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.Material
@@ -16,6 +19,14 @@ import org.bukkit.inventory.ItemStack
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 
+/**
+ * Kit GUI with advanced caching using Caffeine
+ * Best Practices 2026:
+ * - Lazy item creation (only for current page)
+ * - Item caching with Caffeine
+ * - Batch operations for better performance
+ * - MiniMessage component caching
+ */
 class KitGUI(private val plugin: PvPKitsPlugin) {
     
     private val playerPages = mutableMapOf<Player, Int>()
@@ -187,10 +198,27 @@ class KitGUI(private val plugin: PvPKitsPlugin) {
     
     /**
      * Get cache statistics for monitoring
+     * Includes both item cache and component cache stats
      */
-    fun getCacheStats(): String {
+    fun getCacheStats(): Map<String, Any> {
+        val itemStats = kitIconCache.stats()
+        val componentStats = ComponentCache.getStats()
+        
+        return mapOf(
+            "item_cache_size" to kitIconCache.estimatedSize(),
+            "item_hit_rate" to itemStats.hitRate(),
+            "item_miss_rate" to itemStats.missRate(),
+            "item_eviction_count" to itemStats.evictionCount(),
+            "component_cache_stats" to componentStats
+        )
+    }
+    
+    /**
+     * Get formatted cache statistics string
+     */
+    fun getCacheStatsFormatted(): String {
         val stats = kitIconCache.stats()
-        return "Cache hits: ${stats.hitCount()}, misses: ${stats.missCount()}, hit rate: ${String.format("%.2f", stats.hitRate() * 100)}%"
+        return "Item Cache - Hits: ${stats.hitCount()}, Misses: ${stats.missCount()}, Hit Rate: ${String.format("%.2f", stats.hitRate() * 100)}%"
     }
     
     private fun createPreviousPageButton(): ItemStack {

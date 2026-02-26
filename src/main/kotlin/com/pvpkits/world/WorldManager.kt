@@ -5,16 +5,21 @@ import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.World
 import org.bukkit.WorldCreator
-import org.bukkit.WorldType
 import org.bukkit.entity.Player
 import java.io.File
 
 /**
  * Manages lobby and arena worlds
+ * 
+ * Best Practices 2026:
+ * - Loads existing worlds instead of generating new ones
+ * - Supports nested world folders (e.g., lobby/helloween)
+ * - Validates world data before loading
+ * - Proper error handling and logging
  */
 class WorldManager(private val plugin: PvPKitsPlugin) {
     
-    private val lobbyWorld: World? = null
+    private var lobbyWorld: World? = null
     private val arenaWorlds = mutableMapOf<String, World>()
     
     // Spawn locations
@@ -28,122 +33,186 @@ class WorldManager(private val plugin: PvPKitsPlugin) {
     
     /**
      * Load all worlds on startup
+     * Supports nested folders like lobby/helloween or arena1/helloween
      */
     fun loadWorlds() {
-        val dataFolder = Bukkit.getWorldContainer()
+        val serverFolder = Bukkit.getWorldContainer()
         
-        // Try to load lobby world - check for subfolders like lobby/helloween
-        var lobbyLoaded = loadLobbyWorld(dataFolder)
+        plugin.logger.info("Loading worlds from: ${serverFolder.absolutePath}")
         
-        // Load arena worlds - check for subfolders like arena1/helloween
-        dataFolder.listFiles()?.filter { 
-            it.isDirectory && it.name.startsWith(ARENA_PREFIX) 
-        }?.forEach { folder ->
-            loadArenaWorldWithSubfolder(folder)
-        }
+        // Load lobby world
+        lobbyWorld = loadLobbyWorld(serverFolder)
         
-        // Set lobby spawn
-        Bukkit.getWorld(LOBBY_WORLD)?.let { world ->
-            lobbySpawn = world.spawnLocation
-            plugin.logger.info("Lobby world loaded: ${world.name}")
-        } ?: run {
-            // Try to find any world that could be lobby
-            Bukkit.getWorlds().firstOrNull { it.name.contains("lobby", ignoreCase = true) }?.let { world ->
-                lobbySpawn = world.spawnLocation
-                plugin.logger.info("Lobby world found: ${world.name}")
-            }
-        }
+        // Load arena worlds
+        loadArenaWorlds(serverFolder)
+        
+        // Load spawn from config or use world spawn
+        loadLobbySpawnFromConfig()
         
         // Setup arena spawns
         setupArenaSpawns()
         
-        plugin.logger.info("Loaded ${arenaWorlds.size} arena worlds")
+        plugin.logger.info("World loading complete:")
+        plugin.logger.info("  - Lobby: ${lobbyWorld?.name ?: "NOT FOUND"}")
+        plugin.logger.info("  - Arenas: ${arenaWorlds.size}")
+        arenaWorlds.forEach { (name, world) ->
+            plugin.logger.info("    * $name -> ${world.name}")
+        }
     }
     
     /**
-     * Load lobby world, checking for subfolders
+     * Load lobby world, checking for nested folders
+     * Example: D:\server\lobby\helloween -> loads "helloween" world
      */
-    private fun loadLobbyWorld(dataFolder: File): Boolean {
-        val lobbyFolder = File(dataFolder, LOBBY_WORLD)
-        if (!lobbyFolder.exists()) {
-            plugin.logger.warning("Lobby folder not found: $LOBBY_WORLD")
-            return false
+    private fun loadLobbyWorld(serverFolder: File): World? {
+        val lobbyFolder = File(serverFolder, LOBBY_WORLD)
+        
+        // Check if lobby folder exists
+        if (!lobbyFolder.exists() || !lobbyFolder.isDirectory) {
+            plugin.logger.warning("Lobby folder not found: ${lobbyFolder.absolutePath}")
+            
+            // Try to find existing lobby world by name
+            return Bukkit.getWorlds().firstOrNull { 
+                it.name.equals(LOBBY_WORLD, ignoreCase = true) 
+            }
         }
         
-        // Check if there's a subfolder with level.dat (like lobby/helloween)
-        val subfolders = lobbyFolder.listFiles()?.filter { 
+        // Check if lobby folder has level.dat directly
+        if (File(lobbyFolder, "level.dat").exists()) {
+            plugin.logger.info("Found lobby world directly: $LOBBY_WORLD")
+            return loadOrGetWorld(LOBBY_WORLD)
+        }
+        
+        // Check for nested world folder (like lobby/helloween)
+        val nestedWorlds = lobbyFolder.listFiles()?.filter { 
             it.isDirectory && File(it, "level.dat").exists() 
         }
         
-        if (!subfolders.isNullOrEmpty()) {
-            // Load the first subfolder as the actual world
-            val worldName = "${LOBBY_WORLD}/${subfolders.first().name}"
-            val world = loadWorldIfExists(worldName)
-            if (world != null) {
-                plugin.logger.info("Loaded lobby world from subfolder: $worldName")
-                return true
-            }
+        if (!nestedWorlds.isNullOrEmpty()) {
+            val worldFolder = nestedWorlds.first()
+            val worldName = worldFolder.name
+            
+            plugin.logger.info("Found nested lobby world: $LOBBY_WORLD/$worldName")
+            plugin.logger.info("Loading world: $worldName")
+            
+            return loadOrGetWorld(worldName)
         }
         
-        // Try loading directly
-        return loadWorldIfExists(LOBBY_WORLD) != null
+        plugin.logger.warning("No valid world found in lobby folder!")
+        return null
     }
     
     /**
-     * Load arena world, checking for subfolders
+     * Load all arena worlds
+     * Supports nested folders like arena1/helloween
      */
-    private fun loadArenaWorldWithSubfolder(arenaFolder: File) {
-        // Check if there's a subfolder with level.dat (like arena1/helloween)
-        val subfolders = arenaFolder.listFiles()?.filter { 
-            it.isDirectory && File(it, "level.dat").exists() 
-        }
+    private fun loadArenaWorlds(serverFolder: File) {
+        val arenaFolders = serverFolder.listFiles()?.filter { 
+            it.isDirectory && it.name.startsWith(ARENA_PREFIX)
+        } ?: return
         
-        if (!subfolders.isNullOrEmpty()) {
-            // Load the first subfolder as the actual world
-            val worldName = "${arenaFolder.name}/${subfolders.first().name}"
-            val world = loadWorldIfExists(worldName)
-            if (world != null) {
-                arenaWorlds[arenaFolder.name] = world
-                plugin.logger.info("Loaded arena world from subfolder: $worldName")
+        arenaFolders.forEach { arenaFolder ->
+            val arenaName = arenaFolder.name
+            
+            // Check if arena folder has level.dat directly
+            if (File(arenaFolder, "level.dat").exists()) {
+                plugin.logger.info("Found arena world directly: $arenaName")
+                loadOrGetWorld(arenaName)?.let { world ->
+                    arenaWorlds[arenaName] = world
+                }
+                return@forEach
             }
-        } else {
-            // Try loading directly
-            loadWorldIfExists(arenaFolder.name)?.let { world ->
-                arenaWorlds[arenaFolder.name] = world
+            
+            // Check for nested world folder (like arena1/helloween)
+            val nestedWorlds = arenaFolder.listFiles()?.filter { 
+                it.isDirectory && File(it, "level.dat").exists() 
+            }
+            
+            if (!nestedWorlds.isNullOrEmpty()) {
+                val worldFolder = nestedWorlds.first()
+                val worldName = worldFolder.name
+                
+                plugin.logger.info("Found nested arena world: $arenaName/$worldName")
+                plugin.logger.info("Loading world: $worldName")
+                
+                loadOrGetWorld(worldName)?.let { world ->
+                    arenaWorlds[arenaName] = world
+                }
             }
         }
     }
     
     /**
-     * Load a world if it exists
+     * Load or get existing world
+     * This prevents creating new worlds if they already exist
      */
-    private fun loadWorldIfExists(worldName: String): World? {
+    private fun loadOrGetWorld(worldName: String): World? {
+        // Check if world is already loaded
+        Bukkit.getWorld(worldName)?.let { 
+            plugin.logger.info("World already loaded: $worldName")
+            return it 
+        }
+        
+        // Validate world folder exists
         val worldFolder = File(Bukkit.getWorldContainer(), worldName)
-        
         if (!worldFolder.exists() || !worldFolder.isDirectory) {
-            plugin.logger.warning("World folder not found: $worldName")
+            plugin.logger.warning("World folder not found: ${worldFolder.absolutePath}")
             return null
         }
         
-        // Check for level.dat
+        // Validate level.dat exists
         val levelDat = File(worldFolder, "level.dat")
         if (!levelDat.exists()) {
             plugin.logger.warning("Invalid world (no level.dat): $worldName")
             return null
         }
         
+        // Load the world
         return try {
-            val world = Bukkit.createWorld(WorldCreator(worldName))
+            plugin.logger.info("Loading world: $worldName from ${worldFolder.absolutePath}")
+            val world = Bukkit.createWorld(WorldCreator.name(worldName))
+            
             if (world != null) {
-                if (worldName.startsWith(ARENA_PREFIX)) {
-                    arenaWorlds[worldName] = world
-                }
-                plugin.logger.info("Loaded world: $worldName")
+                plugin.logger.info("✓ Successfully loaded world: ${world.name}")
+            } else {
+                plugin.logger.severe("✗ Failed to load world: $worldName (returned null)")
             }
+            
             world
         } catch (e: Exception) {
-            plugin.logger.severe("Failed to load world $worldName: ${e.message}")
+            plugin.logger.severe("✗ Exception loading world $worldName: ${e.message}")
+            e.printStackTrace()
             null
+        }
+    }
+    
+    /**
+     * Load lobby spawn from config
+     */
+    private fun loadLobbySpawnFromConfig() {
+        val config = plugin.config
+        val worldName = config.getString("lobby.spawn.world")
+        
+        if (worldName != null) {
+            val world = Bukkit.getWorld(worldName) ?: lobbyWorld
+            
+            if (world != null) {
+                val x = config.getDouble("lobby.spawn.x", 0.0)
+                val y = config.getDouble("lobby.spawn.y", 64.0)
+                val z = config.getDouble("lobby.spawn.z", 0.0)
+                val yaw = config.getDouble("lobby.spawn.yaw", 0.0).toFloat()
+                val pitch = config.getDouble("lobby.spawn.pitch", 0.0).toFloat()
+                
+                lobbySpawn = Location(world, x, y, z, yaw, pitch)
+                plugin.logger.info("Loaded lobby spawn from config: $x, $y, $z in ${world.name}")
+                return
+            }
+        }
+        
+        // Fallback to world spawn
+        lobbyWorld?.let { world ->
+            lobbySpawn = world.spawnLocation
+            plugin.logger.info("Using world spawn for lobby: ${world.name}")
         }
     }
     
@@ -167,19 +236,34 @@ class WorldManager(private val plugin: PvPKitsPlugin) {
      * Get lobby world
      */
     fun getLobbyWorld(): World? {
-        // Try direct name first
-        Bukkit.getWorld(LOBBY_WORLD)?.let { return it }
+        // Return cached lobby world
+        lobbyWorld?.let { return it }
+        
+        // Try to find by name
+        Bukkit.getWorld(LOBBY_WORLD)?.let { 
+            lobbyWorld = it
+            return it 
+        }
         
         // Try to find world with lobby in name
-        return Bukkit.getWorlds().firstOrNull { it.name.contains("lobby", ignoreCase = true) }
+        return Bukkit.getWorlds().firstOrNull { 
+            it.name.contains("lobby", ignoreCase = true) 
+        }?.also {
+            lobbyWorld = it
+        }
     }
     
     /**
      * Get lobby spawn location
      */
     fun getLobbySpawn(): Location? {
+        // Return cached spawn
+        lobbySpawn?.let { return it }
+        
+        // Get from world
         val world = getLobbyWorld() ?: return null
-        return lobbySpawn ?: world.spawnLocation
+        lobbySpawn = world.spawnLocation
+        return lobbySpawn
     }
     
     /**

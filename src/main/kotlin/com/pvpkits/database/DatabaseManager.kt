@@ -23,7 +23,8 @@ class DatabaseManager(private val plugin: PvPKitsPlugin) {
     }
     
     /**
-     * Initialize the database connection pool
+     * Initialize the database connection pool with optimized settings for SQLite
+     * Following HikariCP best practices 2026
      */
     fun initialize() {
         val dbFile = File(plugin.dataFolder, DATABASE_NAME)
@@ -31,18 +32,33 @@ class DatabaseManager(private val plugin: PvPKitsPlugin) {
         val config = HikariConfig().apply {
             jdbcUrl = "jdbc:sqlite:${dbFile.absolutePath}"
             driverClassName = "org.sqlite.JDBC"
-            maximumPoolSize = 10
-            minimumIdle = 2
-            idleTimeout = 300000 // 5 minutes
-            connectionTimeout = 30000 // 30 seconds
-            maxLifetime = 1800000 // 30 minutes
             
-            // SQLite optimizations
+            // Optimal pool size for SQLite: 1-3 connections
+            // SQLite doesn't support many concurrent writes
+            maximumPoolSize = 3
+            minimumIdle = 1
+            
+            // Connection timeouts
+            connectionTimeout = 30_000 // 30 seconds
+            idleTimeout = 600_000 // 10 minutes
+            maxLifetime = 1_800_000 // 30 minutes
+            
+            // Leak detection for debugging
+            leakDetectionThreshold = 60_000 // 1 minute
+            
+            // Connection test
+            connectionTestQuery = "SELECT 1"
+            
+            // Pool name for monitoring
+            poolName = "PvPKits-SQLite-Pool"
+            
+            // SQLite optimizations (WAL mode for better concurrency)
             addDataSourceProperty("journal_mode", "WAL")
             addDataSourceProperty("synchronous", "NORMAL")
             addDataSourceProperty("cache_size", "10000")
             addDataSourceProperty("temp_store", "MEMORY")
             addDataSourceProperty("locking_mode", "NORMAL")
+            addDataSourceProperty("busy_timeout", "5000")
         }
         
         dataSource = HikariDataSource(config)
@@ -50,7 +66,7 @@ class DatabaseManager(private val plugin: PvPKitsPlugin) {
         // Create tables
         createTables()
         
-        plugin.logger.info("Database initialized with connection pool (max: ${config.maximumPoolSize})")
+        plugin.logger.info("Database initialized with HikariCP pool (max: ${config.maximumPoolSize}, min: ${config.minimumIdle})")
     }
     
     /**
