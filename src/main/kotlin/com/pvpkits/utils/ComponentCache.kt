@@ -8,111 +8,69 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver
 import java.util.concurrent.TimeUnit
 
 /**
- * High-performance cache for MiniMessage components
- * Uses Caffeine with Window TinyLFU eviction policy
+ * Component Cache - оптимизация MiniMessage парсинга
  * 
  * Best Practices 2026:
- * - Cache parsed components to avoid repeated parsing
- * - Use Caffeine's advanced eviction algorithms
- * - Monitor cache hit rates for optimization
+ * - Кэширование часто используемых компонентов
+ * - Избегание повторного парсинга
+ * - Caffeine cache для автоматической очистки
  */
 object ComponentCache {
     
     private val miniMessage = MiniMessage.miniMessage()
     
-    /**
-     * Cache for static components (no placeholders)
-     * Larger size, longer expiration
-     */
+    // Кэш для статических компонентов (без плейсхолдеров)
     private val staticCache: Cache<String, Component> = Caffeine.newBuilder()
-        .maximumSize(1_000)
-        .expireAfterAccess(30, TimeUnit.MINUTES)
-        .recordStats()
-        .build()
-    
-    /**
-     * Cache for dynamic components (with placeholders)
-     * Smaller size, shorter expiration
-     */
-    private val dynamicCache: Cache<String, Component> = Caffeine.newBuilder()
         .maximumSize(500)
-        .expireAfterWrite(5, TimeUnit.MINUTES)
+        .expireAfterWrite(10, TimeUnit.MINUTES)
         .recordStats()
         .build()
     
     /**
-     * Parse a static MiniMessage string (no placeholders)
-     * Results are cached for better performance
+     * Парсинг статического текста (кэшируется)
      */
-    fun parseStatic(miniMessageString: String): Component {
-        return staticCache.get(miniMessageString) {
-            miniMessage.deserialize(miniMessageString)
+    fun parse(text: String): Component {
+        return staticCache.get(text) { 
+            miniMessage.deserialize(it) 
         }!!
     }
     
     /**
-     * Parse a dynamic MiniMessage string with tag resolvers
-     * Results are cached with the full key (message + resolvers hash)
+     * Парсинг с плейсхолдерами (не кэшируется)
      */
-    fun parseDynamic(miniMessageString: String, vararg resolvers: TagResolver): Component {
-        // Create cache key from message and resolvers
-        val cacheKey = "$miniMessageString:${resolvers.contentHashCode()}"
-        
-        return dynamicCache.get(cacheKey) {
-            miniMessage.deserialize(miniMessageString, *resolvers)
-        }!!
+    fun parseDynamic(text: String, vararg resolvers: TagResolver): Component {
+        return miniMessage.deserialize(text, *resolvers)
     }
     
     /**
-     * Parse without caching (for one-time use)
+     * Парсинг с простыми плейсхолдерами (Map)
      */
-    fun parseUncached(miniMessageString: String, vararg resolvers: TagResolver): Component {
-        return if (resolvers.isEmpty()) {
-            miniMessage.deserialize(miniMessageString)
-        } else {
-            miniMessage.deserialize(miniMessageString, *resolvers)
+    fun parseWithPlaceholders(text: String, placeholders: Map<String, String>): Component {
+        var result = text
+        placeholders.forEach { (key, value) ->
+            result = result.replace("{$key}", value)
         }
+        return miniMessage.deserialize(result)
     }
     
     /**
-     * Clear all caches
+     * Очистить кэш
      */
-    fun clearAll() {
+    fun clearCache() {
         staticCache.invalidateAll()
-        dynamicCache.invalidateAll()
     }
     
     /**
-     * Get cache statistics for monitoring
+     * Получить статистику кэша
      */
-    fun getStats(): Map<String, Any> {
-        val staticStats = staticCache.stats()
-        val dynamicStats = dynamicCache.stats()
-        
+    fun getCacheStats(): Map<String, Any> {
+        val stats = staticCache.stats()
         return mapOf(
-            "static_cache_size" to staticCache.estimatedSize(),
-            "static_hit_rate" to staticStats.hitRate(),
-            "static_miss_rate" to staticStats.missRate(),
-            "static_eviction_count" to staticStats.evictionCount(),
-            
-            "dynamic_cache_size" to dynamicCache.estimatedSize(),
-            "dynamic_hit_rate" to dynamicStats.hitRate(),
-            "dynamic_miss_rate" to dynamicStats.missRate(),
-            "dynamic_eviction_count" to dynamicStats.evictionCount()
+            "size" to staticCache.estimatedSize(),
+            "hit_rate" to stats.hitRate(),
+            "miss_rate" to stats.missRate(),
+            "load_count" to stats.loadCount(),
+            "eviction_count" to stats.evictionCount()
         )
-    }
-    
-    /**
-     * Get cache hit rate (0.0 to 1.0)
-     */
-    fun getHitRate(): Double {
-        val staticStats = staticCache.stats()
-        val dynamicStats = dynamicCache.stats()
-        
-        val totalRequests = staticStats.requestCount() + dynamicStats.requestCount()
-        if (totalRequests == 0L) return 0.0
-        
-        val totalHits = staticStats.hitCount() + dynamicStats.hitCount()
-        return totalHits.toDouble() / totalRequests.toDouble()
     }
 }

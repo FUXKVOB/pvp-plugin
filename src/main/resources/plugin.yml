@@ -88,6 +88,10 @@ commands:
     usage: /heatmap <deaths|kills|stats|clear> <arena> [duration]
     permission: pvpkits.heatmap
     aliases: [heat, analytics]
+  replay:
+    description: View match replays
+    usage: /replay [list|view|info]
+    aliases: [replays, rec]
 
 permissions:
   pvpkits.use:
@@ -129,3 +133,6 @@ permissions:
   pvpkits.heatmap.clear:
     description: Clear heatmap data
     default: op
+  pvpkits.replay:
+    description: View replays
+    default: true

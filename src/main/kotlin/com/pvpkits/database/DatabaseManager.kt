@@ -3,179 +3,170 @@ package com.pvpkits.database
 import com.pvpkits.PvPKitsPlugin
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import java.io.File
 import java.sql.Connection
-import java.sql.SQLException
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
 
 /**
- * Database manager using SQLite with HikariCP connection pooling
- * Provides high-performance async database operations
+ * Database Manager - 2026 Edition
+ * 
+ * Best Practices:
+ * - HikariCP connection pooling
+ * - SQLite WAL mode для производительности
+ * - Оптимальная конфигурация для SQLite
+ * - Batch operations support
  */
 class DatabaseManager(private val plugin: PvPKitsPlugin) {
     
-    private var dataSource: HikariDataSource? = null
-    private val executor = Executors.newFixedThreadPool(4)
-    
-    companion object {
-        private const val DATABASE_NAME = "pvpkits.db"
-    }
+    private lateinit var dataSource: HikariDataSource
     
     /**
-     * Initialize the database connection pool with optimized settings for SQLite
-     * Following HikariCP best practices 2026
+     * Инициализация базы данных с оптимальной конфигурацией
      */
     fun initialize() {
-        val dbFile = File(plugin.dataFolder, DATABASE_NAME)
+        val dbFile = plugin.dataFolder.resolve("pvpkits.db")
         
         val config = HikariConfig().apply {
             jdbcUrl = "jdbc:sqlite:${dbFile.absolutePath}"
             driverClassName = "org.sqlite.JDBC"
             
-            // Optimal pool size for SQLite: 1-3 connections
-            // SQLite doesn't support many concurrent writes
-            maximumPoolSize = 3
+            // SQLite = single writer, поэтому 1 connection
+            maximumPoolSize = 1
             minimumIdle = 1
+            connectionTimeout = 30000
+            idleTimeout = 600000
+            maxLifetime = 1800000
             
-            // Connection timeouts
-            connectionTimeout = 30_000 // 30 seconds
-            idleTimeout = 600_000 // 10 minutes
-            maxLifetime = 1_800_000 // 30 minutes
+            // SQLite оптимизации
+            addDataSourceProperty("cachePrepStmts", "true")
+            addDataSourceProperty("prepStmtCacheSize", "250")
+            addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
             
-            // Leak detection for debugging
-            leakDetectionThreshold = 60_000 // 1 minute
+            // WAL mode для лучшей производительности (2026 стандарт)
+            connectionInitSql = """
+                PRAGMA journal_mode=WAL;
+                PRAGMA synchronous=NORMAL;
+                PRAGMA cache_size=10000;
+                PRAGMA temp_store=MEMORY;
+                PRAGMA mmap_size=30000000000;
+            """.trimIndent()
             
-            // Connection test
-            connectionTestQuery = "SELECT 1"
-            
-            // Pool name for monitoring
-            poolName = "PvPKits-SQLite-Pool"
-            
-            // SQLite optimizations (WAL mode for better concurrency)
-            addDataSourceProperty("journal_mode", "WAL")
-            addDataSourceProperty("synchronous", "NORMAL")
-            addDataSourceProperty("cache_size", "10000")
-            addDataSourceProperty("temp_store", "MEMORY")
-            addDataSourceProperty("locking_mode", "NORMAL")
-            addDataSourceProperty("busy_timeout", "5000")
+            poolName = "PvPKits-Pool"
         }
         
         dataSource = HikariDataSource(config)
         
-        // Create tables
+        // Создать таблицы
         createTables()
         
-        plugin.logger.info("Database initialized with HikariCP pool (max: ${config.maximumPoolSize}, min: ${config.minimumIdle})")
+        plugin.logger.info("Database initialized with WAL mode and optimized settings")
     }
     
     /**
-     * Create necessary tables
+     * Создать таблицы
      */
     private fun createTables() {
         executeSync { connection ->
-            // Player stats table
-            connection.createStatement().execute("""
-                CREATE TABLE IF NOT EXISTS player_stats (
-                    uuid TEXT PRIMARY KEY,
-                    player_name TEXT NOT NULL,
-                    kills INTEGER DEFAULT 0,
-                    deaths INTEGER DEFAULT 0,
-                    current_killstreak INTEGER DEFAULT 0,
-                    best_killstreak INTEGER DEFAULT 0,
-                    last_kit_used TEXT,
-                    last_updated INTEGER DEFAULT 0
-                )
-            """.trimIndent())
-            
-            // Kit usage table
-            connection.createStatement().execute("""
-                CREATE TABLE IF NOT EXISTS kit_usage (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    player_uuid TEXT NOT NULL,
-                    kit_name TEXT NOT NULL,
-                    use_count INTEGER DEFAULT 1,
-                    FOREIGN KEY (player_uuid) REFERENCES player_stats(uuid),
-                    UNIQUE(player_uuid, kit_name)
-                )
-            """.trimIndent())
-            
-            // Create indexes for better performance
-            connection.createStatement().execute("CREATE INDEX IF NOT EXISTS idx_stats_kills ON player_stats(kills DESC)")
-            connection.createStatement().execute("CREATE INDEX IF NOT EXISTS idx_stats_name ON player_stats(player_name)")
-            connection.createStatement().execute("CREATE INDEX IF NOT EXISTS idx_kit_usage_player ON kit_usage(player_uuid)")
-        }
-    }
-    
-    /**
-     * Get a connection from the pool
-     */
-    fun getConnection(): Connection? {
-        return try {
-            dataSource?.connection
-        } catch (e: SQLException) {
-            plugin.logger.severe("Failed to get database connection: ${e.message}")
-            null
-        }
-    }
-    
-    /**
-     * Execute a database operation asynchronously
-     */
-    fun <T> executeAsync(operation: (Connection) -> T): CompletableFuture<T> {
-        return CompletableFuture.supplyAsync({
-            getConnection()?.use { connection ->
-                operation(connection)
-            } ?: throw SQLException("No database connection available")
-        }, executor)
-    }
-    
-    /**
-     * Execute a database operation synchronously
-     */
-    fun <T> executeSync(operation: (Connection) -> T): T? {
-        return getConnection()?.use { connection ->
-            operation(connection)
-        }
-    }
-    
-    /**
-     * Execute a batch operation for better performance
-     */
-    fun executeBatch(operation: (Connection) -> Unit) {
-        getConnection()?.use { connection ->
-            connection.autoCommit = false
-            try {
-                operation(connection)
-                connection.commit()
-            } catch (e: Exception) {
-                connection.rollback()
-                throw e
-            } finally {
-                connection.autoCommit = true
+            connection.createStatement().use { statement ->
+                // Player stats table
+                statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS player_stats (
+                        uuid TEXT PRIMARY KEY,
+                        player_name TEXT NOT NULL,
+                        kills INTEGER DEFAULT 0,
+                        deaths INTEGER DEFAULT 0,
+                        current_killstreak INTEGER DEFAULT 0,
+                        best_killstreak INTEGER DEFAULT 0,
+                        last_kit_used TEXT,
+                        last_updated INTEGER
+                    )
+                """)
+                
+                // Kit usage table
+                statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS kit_usage (
+                        player_uuid TEXT,
+                        kit_name TEXT,
+                        use_count INTEGER DEFAULT 0,
+                        PRIMARY KEY (player_uuid, kit_name),
+                        FOREIGN KEY (player_uuid) REFERENCES player_stats(uuid)
+                    )
+                """)
+                
+                // Indexes для производительности
+                statement.executeUpdate("""
+                    CREATE INDEX IF NOT EXISTS idx_kills ON player_stats(kills DESC)
+                """)
+                
+                statement.executeUpdate("""
+                    CREATE INDEX IF NOT EXISTS idx_best_killstreak ON player_stats(best_killstreak DESC)
+                """)
             }
         }
     }
     
     /**
-     * Close the database connection pool
+     * Получить connection из пула
      */
-    fun shutdown() {
-        executor.shutdown()
-        dataSource?.close()
-        plugin.logger.info("Database connection pool closed")
+    fun getConnection(): Connection {
+        return dataSource.connection
     }
     
     /**
-     * Get pool statistics for monitoring
+     * Выполнить синхронную операцию
+     */
+    fun <T> executeSync(block: (Connection) -> T): T? {
+        return try {
+            getConnection().use { connection ->
+                block(connection)
+            }
+        } catch (e: Exception) {
+            plugin.logger.severe("Database error: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
+    
+    /**
+     * Выполнить batch операцию
+     */
+    fun executeBatch(block: (Connection) -> Unit) {
+        try {
+            getConnection().use { connection ->
+                connection.autoCommit = false
+                try {
+                    block(connection)
+                    connection.commit()
+                } catch (e: Exception) {
+                    connection.rollback()
+                    throw e
+                } finally {
+                    connection.autoCommit = true
+                }
+            }
+        } catch (e: Exception) {
+            plugin.logger.severe("Batch operation error: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+    
+    /**
+     * Получить статистику пула
      */
     fun getPoolStats(): Map<String, Any> {
-        val pool = dataSource?.hikariPoolMXBean ?: return emptyMap()
         return mapOf(
-            "active_connections" to pool.activeConnections,
-            "idle_connections" to pool.idleConnections,
-            "total_connections" to pool.totalConnections,
-            "waiting_threads" to pool.threadsAwaitingConnection
+            "active_connections" to dataSource.hikariPoolMXBean.activeConnections,
+            "idle_connections" to dataSource.hikariPoolMXBean.idleConnections,
+            "total_connections" to dataSource.hikariPoolMXBean.totalConnections,
+            "threads_awaiting" to dataSource.hikariPoolMXBean.threadsAwaitingConnection
         )
+    }
+    
+    /**
+     * Shutdown пула
+     */
+    fun shutdown() {
+        if (::dataSource.isInitialized && !dataSource.isClosed) {
+            dataSource.close()
+            plugin.logger.info("Database connection pool closed")
+        }
     }
 }

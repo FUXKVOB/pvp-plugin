@@ -68,3 +68,80 @@ messages:
   killstreak.15: "&4&l⚔ &e{0} &4is on a &e15 kill streak! &lGODLIKE!"
   killstreak.20: "&d&l⚔ &e{0} &dis on a &e20 kill streak! &lLEGENDARY!"
 
+# Anti-Cheat System (2026 Edition)
+anticheat:
+  enabled: true
+  auto-kick: false  # Автоматический кик при нарушениях
+  max-cps: 20  # Максимальный CPS (легит ~16-18)
+  max-reach: 3.5  # Максимальная дальность атаки (vanilla)
+  velocity-threshold: 0.5  # Порог для velocity check
+  violation-threshold: 10  # Количество нарушений до наказания
+  violation-decay-time: 60  # Время decay нарушений (секунды)
+
+# Component Cache (оптимизация MiniMessage)
+component-cache:
+  enabled: true
+  max-size: 500  # Максимальный размер кэша
+  expire-minutes: 10  # Время жизни записи
+
+# Database Settings (WAL mode для производительности)
+database:
+  wal-mode: true  # Write-Ahead Logging (2026 стандарт)
+  cache-size: 10000  # Размер кэша SQLite
+  synchronous: NORMAL  # NORMAL или FULL
+  temp-store: MEMORY  # Временные данные в памяти
+
+# bStats Metrics (анонимная статистика)
+bstats:
+  enabled: true  # Отключите если не хотите отправлять метрики
+
+# Nametag Visual (2026 Edition)
+nametag-visual:
+  gradient-colors: true  # Градиентные цвета для здоровья/пинга
+  emoji-indicators: true  # Эмодзи индикаторы (🟢🟡🔴)
+  half-hearts: true  # Показывать половинки сердец
+  show-max-health: true  # Показывать максимальное здоровье
+
+# Scoreboard Animation (2026 Edition)
+scoreboard-animation:
+  enabled: true  # Анимированный заголовок
+  animation-speed: 20  # Скорость анимации (тики)
+  update-interval: 20  # Интервал обновления (тики)
+
+# Replay System
+replay:
+  enabled: true
+  max-replays-per-player: 10
+  record-interval-ticks: 1  # Запись каждый тик
+  auto-cleanup: true  # Автоочистка старых реплеев
+
+# Rating System
+rating:
+  enabled: true
+  starting-rating: 1000
+  k-factor: 32
+  k-factor-new: 40  # Для игроков с <30 матчей
+  min-rating: 0
+  max-rating: 3000
+
+# Cosmetics
+cosmetics:
+  enabled: true
+  trail-update-interval: 1  # ticks
+  allow-in-combat: true
+
+# Party System
+party:
+  enabled: true
+  max-size: 8
+  invite-timeout: 60  # seconds
+  allow-pvp: false  # Могут ли участники группы драться
+
+# Enhanced Stats
+enhanced-stats:
+  enabled: true
+  track-kit-stats: true
+  track-match-history: true
+  track-daily-stats: true
+  achievements-enabled: true
+  max-match-history: 100  # per player

@@ -88,6 +88,13 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.48.0.0</version>
         </dependency>
+        <!-- bStats Metrics (2026) -->
+        <dependency>
+            <groupId>org.bstats</groupId>
+            <artifactId>bstats-bukkit</artifactId>
+            <version>3.1.0</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -168,6 +175,10 @@
                                 <relocation>
                                     <pattern>com.zaxxer.hikari</pattern>
                                     <shadedPattern>com.pvpkits.hikari</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.bstats</pattern>
+                                    <shadedPattern>com.pvpkits.bstats</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

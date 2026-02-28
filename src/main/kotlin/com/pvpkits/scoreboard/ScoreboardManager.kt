@@ -21,10 +21,27 @@ class ScoreboardManager(private val plugin: PvPKitsPlugin) {
     private val playerScoreboards = ConcurrentHashMap<UUID, PlayerScoreboard>()
     
     companion object {
-        private const val TITLE = "§6§l⚔ PvPKits §r"
-        private const val DUEL_TITLE = "§c§l⚔ DUEL §r"
         private const val UPDATE_INTERVAL = 20L // 1 second
+        
+        // Анимированные заголовки (2026 визуал)
+        private val TITLE_FRAMES = listOf(
+            "§c§l⚔ §6§lPvPKits §c§l⚔",
+            "§6§l⚔ §e§lPvPKits §6§l⚔",
+            "§e§l⚔ §f§lPvPKits §e§l⚔",
+            "§f§l⚔ §e§lPvPKits §f§l⚔",
+            "§e§l⚔ §6§lPvPKits §e§l⚔",
+            "§6§l⚔ §c§lPvPKits §6§l⚔"
+        )
+        
+        private val DUEL_TITLE_FRAMES = listOf(
+            "§c§l⚔ §4§lDUEL §c§l⚔",
+            "§4§l⚔ §c§lDUEL §4§l⚔",
+            "§c§l⚔ §4§lDUEL §c§l⚔",
+            "§4§l⚔ §c§lDUEL §4§l⚔"
+        )
     }
+    
+    private var titleFrame = 0
     
     /**
      * Create scoreboard for a player
@@ -45,7 +62,7 @@ class ScoreboardManager(private val plugin: PvPKitsPlugin) {
      */
     private fun setupLobbyScoreboard(player: Player) {
         val scoreboard = Bukkit.getScoreboardManager().newScoreboard
-        val objective = scoreboard.registerNewObjective("pvpkits", "dummy", TITLE)
+        val objective = scoreboard.registerNewObjective("pvpkits", "dummy", getAnimatedTitle())
         objective.displaySlot = DisplaySlot.SIDEBAR
         
         // Create teams for each line
@@ -89,7 +106,7 @@ class ScoreboardManager(private val plugin: PvPKitsPlugin) {
      */
     fun setupDuelScoreboard(player: Player, kitName: String, arenaName: String) {
         val scoreboard = Bukkit.getScoreboardManager().newScoreboard
-        val objective = scoreboard.registerNewObjective("duel", "dummy", DUEL_TITLE)
+        val objective = scoreboard.registerNewObjective("duel", "dummy", getAnimatedDuelTitle())
         objective.displaySlot = DisplaySlot.SIDEBAR
         
         val duelMatch = plugin.duelManager.getPlayerMatch(player.uniqueId)
@@ -236,12 +253,41 @@ class ScoreboardManager(private val plugin: PvPKitsPlugin) {
      */
     fun startAutoUpdate() {
         SchedulerUtils.runTaskTimer(plugin, UPDATE_INTERVAL, UPDATE_INTERVAL, Runnable {
+            // Обновить фрейм анимации
+            titleFrame = (titleFrame + 1) % TITLE_FRAMES.size
+            
             Bukkit.getOnlinePlayers().forEach { player ->
                 if (playerScoreboards.containsKey(player.uniqueId)) {
                     updateScoreboard(player)
+                    
+                    // Обновить заголовок
+                    val ps = playerScoreboards[player.uniqueId]
+                    if (ps != null) {
+                        ps.objective.displayName(
+                            if (ps.isDuelScoreboard) getAnimatedDuelTitle() else getAnimatedTitle()
+                        )
+                    }
                 }
             }
         })
+    }
+    
+    /**
+     * Получить анимированный заголовок
+     */
+    private fun getAnimatedTitle(): Component {
+        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+            .legacySection()
+            .deserialize(TITLE_FRAMES[titleFrame])
+    }
+    
+    /**
+     * Получить анимированный заголовок дуэли
+     */
+    private fun getAnimatedDuelTitle(): Component {
+        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+            .legacySection()
+            .deserialize(DUEL_TITLE_FRAMES[titleFrame % DUEL_TITLE_FRAMES.size])
     }
     
     /**

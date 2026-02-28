@@ -111,6 +111,12 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
     
     lateinit var batchStatsManager: BatchStatsManager
         private set
+    
+    lateinit var antiCheatManager: com.pvpkits.anticheat.ModernAntiCheatManager
+        private set
+    
+    lateinit var replayViewerGUI: com.pvpkits.replay.ReplayViewerGUI
+        private set
 
     override suspend fun onEnableAsync() {
         // Initialize coroutine scope for structured concurrency
@@ -196,6 +202,19 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         // Initialize batch stats manager
         batchStatsManager = BatchStatsManager(this)
         
+        // Initialize anti-cheat system (2026)
+        antiCheatManager = com.pvpkits.anticheat.ModernAntiCheatManager(this)
+        
+        // Initialize replay viewer GUI
+        replayViewerGUI = com.pvpkits.replay.ReplayViewerGUI(this)
+        
+        // Initialize bStats metrics (2026)
+        try {
+            com.pvpkits.metrics.BStatsMetrics(this).initialize()
+        } catch (e: Exception) {
+            logger.warning("Failed to initialize bStats: ${e.message}")
+        }
+        
         // Initialize matchmaking system
         matchmakingManager = MatchmakingManager(this)
         
@@ -277,6 +296,11 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         getCommand("heatmap")?.setExecutor(heatmapCommand)
         getCommand("heatmap")?.tabCompleter = heatmapCommand
         
+        // Register replay commands
+        val replayCommand = com.pvpkits.replay.ReplayCommand(this)
+        getCommand("replay")?.setExecutor(replayCommand)
+        getCommand("replay")?.tabCompleter = replayCommand
+        
         server.pluginManager.registerEvents(this, this)
         
         // Start cosmetics trail updater (every tick)
@@ -304,19 +328,39 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         val combatStats = combatMechanicsManager.getStats()
         val heatmapStats = heatmapManager.getGlobalStats()
         val batchStats = batchStatsManager.getQueueStats()
+        val antiCheatStats = antiCheatManager.getStats()
+        val componentCacheStats = com.pvpkits.utils.ComponentCache.getCacheStats()
         
         logger.info("╔════════════════════════════════════╗")
-        logger.info("║   PvPKits v${description.version} Enabled        ║")
+        logger.info("║   PvPKits v${description.version} - 2026 Edition  ║")
+        logger.info("╠════════════════════════════════════╣")
+        logger.info("║   📦 Core Systems                  ║")
         logger.info("║   Loaded ${memStats["kits_loaded"]} kits                  ║")
         logger.info("║   Players tracked: ${statsInfo["total_players"]}            ║")
         logger.info("║   Arenas: ${arenaStats["arenas_loaded"]}                       ║")
         logger.info("║   Arena Templates: ${improvedArenaStats["templates"]}              ║")
         logger.info("║   Worlds: ${worldManager.getArenaCount()} arenas loaded       ║")
+        logger.info("╠════════════════════════════════════╣")
+        logger.info("║   🎮 Game Systems                  ║")
         logger.info("║   Duels: ${duelManager.getActiveMatchCount()} active               ║")
         logger.info("║   MMR Queue: ${matchmakingStats["total_in_queue"]} players          ║")
         logger.info("║   Combat Tracking: ${combatStats["active_combos"]} combos      ║")
         logger.info("║   Heatmap: ${heatmapStats["tracked_arenas"]} arenas tracked    ║")
+        logger.info("╠════════════════════════════════════╣")
+        logger.info("║   🔧 Performance (2026)            ║")
         logger.info("║   Batch Queue: ${batchStats["total_pending"]} pending         ║")
+        logger.info("║   Component Cache: ${componentCacheStats["size"]} cached      ║")
+        logger.info("║   Cache Hit Rate: ${String.format("%.1f", (componentCacheStats["hit_rate"] as Double) * 100)}%      ║")
+        logger.info("║   DB Pool: ${statsInfo["db_pool_active"]}/${statsInfo["db_pool_idle"]} active/idle      ║")
+        logger.info("║   Leaderboard Cache: ${String.format("%.1f", (statsInfo["leaderboard_cache_hit_rate"] as Double) * 100)}%  ║")
+        logger.info("╠════════════════════════════════════╣")
+        logger.info("║   🛡️ Security (2026)                ║")
+        logger.info("║   Anti-Cheat: ON                   ║")
+        logger.info("║   Tracked Players: ${antiCheatStats["tracked_players"]}            ║")
+        logger.info("║   Click Violations: ${antiCheatStats["total_click_violations"]}            ║")
+        logger.info("║   Reach Violations: ${antiCheatStats["total_reach_violations"]}            ║")
+        logger.info("╠════════════════════════════════════╣")
+        logger.info("║   ✨ Features                      ║")
         logger.info("║   Spectator: ON                    ║")
         logger.info("║   Tournaments: ON                  ║")
         logger.info("║   ELO Rating: ON                   ║")
@@ -325,10 +369,13 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         logger.info("║   Party System: ON                 ║")
         logger.info("║   Nametags: ${if (config.getBoolean("nametag.enabled")) "ON" else "OFF"}               ║")
         logger.info("║   Stats: ${if (config.getBoolean("stats.enabled")) "ON" else "OFF"}                  ║")
+        logger.info("╠════════════════════════════════════╣")
+        logger.info("║   💻 Tech Stack                    ║")
         logger.info("║   Java: ${System.getProperty("java.version")}             ║")
         logger.info("║   Kotlin 2.3.0 + Coroutines        ║")
-        logger.info("║   Optimized: Caching + Memory Mgmt ║")
+        logger.info("║   HikariCP + Caffeine + WAL        ║")
         logger.info("║   Server: ${com.pvpkits.utils.FoliaSchedulerUtils.getServerInfo()}          ║")
+        logger.info("║   bStats: ON                       ║")
         logger.info("╚════════════════════════════════════╝")
     }
 
@@ -365,10 +412,12 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
             cosmeticsManager.cleanupPlayer(player.uniqueId)
             matchmakingManager.cleanupPlayer(player.uniqueId)
             combatMechanicsManager.cleanupPlayer(player.uniqueId)
+            antiCheatManager.cleanupPlayer(player.uniqueId)
         }
         
         // Clear all caches
         kitGUI.clearAllCache()
+        com.pvpkits.utils.ComponentCache.clearCache()
         
         logger.info("PvPKits plugin disabled - all resources cleaned up!")
     }
@@ -475,5 +524,6 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         tournamentManager.cleanupPlayer(player.uniqueId)
         partyManager.cleanupPlayer(player.uniqueId)
         cosmeticsManager.cleanupPlayer(player.uniqueId)
+        antiCheatManager.cleanupPlayer(player.uniqueId)
     }
 }

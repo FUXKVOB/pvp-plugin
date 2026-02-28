@@ -104,34 +104,55 @@ class NametagManager(private val plugin: PvPKitsPlugin) {
     
     private fun formatHealth(health: Int, maxHealth: Int): String {
         val percentage = (health.toDouble() / maxHealth.toDouble()) * 100
+        
+        // Градиентные цвета для здоровья (2026 визуал)
         val color = when {
-            percentage >= 75 -> "<green>"
-            percentage >= 50 -> "<yellow>"
-            percentage >= 25 -> "<gold>"
-            else -> "<red>"
+            percentage >= 90 -> "<gradient:#00ff00:#55ff55>"
+            percentage >= 75 -> "<gradient:#55ff55:#ffff00>"
+            percentage >= 50 -> "<gradient:#ffff00:#ffaa00>"
+            percentage >= 25 -> "<gradient:#ffaa00:#ff5500>"
+            else -> "<gradient:#ff5500:#ff0000>"
         }
         
-        val hearts = "❤".repeat((health / 2).coerceAtLeast(1))
-        return "$color$hearts <gray>$health"
+        // Красивые сердечки с анимацией
+        val heartCount = (health / 2.0).toInt().coerceAtLeast(1).coerceAtMost(10)
+        val hearts = "❤".repeat(heartCount)
+        
+        // Добавить половинку если нечетное
+        val halfHeart = if (health % 2 == 1) "💔" else ""
+        
+        return "$color$hearts$halfHeart</gradient> <gray>$health<dark_gray>/$maxHealth"
     }
     
     private fun formatPing(ping: Int): String {
+        // Градиентные цвета для пинга (2026 визуал)
         val color = when {
-            ping < 50 -> "<green>"
-            ping < 100 -> "<yellow>"
-            ping < 200 -> "<gold>"
-            else -> "<red>"
+            ping < 30 -> "<gradient:#00ff00:#55ff55>"
+            ping < 50 -> "<gradient:#55ff55:#ffff00>"
+            ping < 100 -> "<gradient:#ffff00:#ffaa00>"
+            ping < 150 -> "<gradient:#ffaa00:#ff5500>"
+            else -> "<gradient:#ff5500:#ff0000>"
         }
         
+        // Красивые индикаторы пинга
         val bars = when {
-            ping < 50 -> "▮▮▮▮▮"
-            ping < 100 -> "▮▮▮▮▯"
-            ping < 150 -> "▮▮▮▯▯"
-            ping < 200 -> "▮▮▯▯▯"
-            else -> "▮▯▯▯▯"
+            ping < 30 -> "█████"
+            ping < 50 -> "████▓"
+            ping < 100 -> "███▓▓"
+            ping < 150 -> "██▓▓▓"
+            ping < 200 -> "█▓▓▓▓"
+            else -> "▓▓▓▓▓"
         }
         
-        return "$color$bars <gray>${ping}ms"
+        // Эмодзи индикатор
+        val emoji = when {
+            ping < 50 -> "🟢"
+            ping < 100 -> "🟡"
+            ping < 200 -> "🟠"
+            else -> "🔴"
+        }
+        
+        return "$color$bars</gradient> $emoji <gray>${ping}ms"
     }
     
     private fun getPing(player: Player): Int {
