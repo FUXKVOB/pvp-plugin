@@ -64,3 +64,6 @@ node_modules/
 npm-debug.log*
 yarn-error.log*
 pnpm-lock.yaml
+
+# Suntier web project (separate repo)
+suntier/
