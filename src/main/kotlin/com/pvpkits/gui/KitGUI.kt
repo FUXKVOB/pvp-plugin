@@ -202,7 +202,7 @@ class KitGUI(private val plugin: PvPKitsPlugin) {
      */
     fun getCacheStats(): Map<String, Any> {
         val itemStats = kitIconCache.stats()
-        val componentStats = ComponentCache.getStats()
+        val componentStats = ComponentCache.getCacheStats()
         
         return mapOf(
             "item_cache_size" to kitIconCache.estimatedSize(),

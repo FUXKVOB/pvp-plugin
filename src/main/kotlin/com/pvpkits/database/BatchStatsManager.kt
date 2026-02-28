@@ -176,7 +176,7 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
                           pendingRatingUpdates.size
         
         if (totalPending >= MAX_BATCH_SIZE) {
-            plugin.launch {
+            CoroutineUtils.pluginScope.launch {
                 flushAll()
             }
         }
@@ -186,7 +186,7 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
      * Flush всех очередей
      */
     fun flushAll() {
-        plugin.launch {
+        CoroutineUtils.pluginScope.launch {
             try {
                 flushStatUpdates()
                 flushKitStatUpdates()
@@ -213,11 +213,12 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
         if (updates.isEmpty()) return
         
         CoroutineUtils.io {
-            plugin.statsManager.getConnection().use { conn ->
-                conn.autoCommit = false
+            val conn = plugin.statsManager.getConnection()
+            conn.use {
+                it.autoCommit = false
                 
                 try {
-                    val stmt = conn.prepareStatement("""
+                    val stmt = it.prepareStatement("""
                         INSERT INTO stats (uuid, player_name, kills, deaths, last_seen)
                         VALUES (?, ?, ?, ?, ?)
                         ON CONFLICT(uuid) DO UPDATE SET
@@ -236,14 +237,14 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
                     }
                     
                     stmt.executeBatch()
-                    conn.commit()
+                    it.commit()
                     
                     plugin.logger.info("Flushed ${updates.size} stat updates")
                 } catch (e: Exception) {
-                    conn.rollback()
+                    it.rollback()
                     throw e
                 } finally {
-                    conn.autoCommit = true
+                    it.autoCommit = true
                 }
             }
         }
@@ -371,7 +372,7 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
         if (updates.isEmpty()) return
         
         CoroutineUtils.io {
-            plugin.ratingManager.getConnection().use { conn ->
+            plugin.enhancedStatsManager.getConnection().use { conn ->
                 conn.autoCommit = false
                 
                 try {

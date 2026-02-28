@@ -1,5 +1,6 @@
 package com.pvpkits.replay
 
+import com.github.shynixn.mccoroutine.bukkit.launch
 import com.pvpkits.PvPKitsPlugin
 import com.pvpkits.utils.ComponentCache
 import net.kyori.adventure.text.Component
@@ -26,32 +27,37 @@ class ReplayViewerGUI(private val plugin: PvPKitsPlugin) {
      * Открыть список реплеев игрока
      */
     fun openReplayList(player: Player) {
-        val replays = plugin.replayManager.getPlayerReplays(player.uniqueId)
-        
-        if (replays.isEmpty()) {
-            player.sendMessage(ComponentCache.parse("<red>У вас нет сохраненных реплеев"))
-            return
+        plugin.launch {
+            val replayIds = plugin.replayManager.getPlayerReplays(player.uniqueId)
+            
+            if (replayIds.isEmpty()) {
+                player.sendMessage(ComponentCache.parse("<red>У вас нет сохраненных реплеев"))
+                return@launch
+            }
+            
+            val inventory = Bukkit.createInventory(
+                null,
+                54,
+                ComponentCache.parse("<gradient:#ff0000:#ff6b6b>📹 Мои Реплеи</gradient>")
+            )
+            
+            replayIds.take(45).forEachIndexed { index, replayId ->
+                val replay = plugin.replayManager.loadReplay(replayId)
+                if (replay != null) {
+                    val item = createReplayItem(replay)
+                    inventory.setItem(index, item)
+                }
+            }
+            
+            // Кнопка закрытия
+            val closeButton = ItemStack(Material.BARRIER)
+            val closeMeta = closeButton.itemMeta
+            closeMeta.displayName(ComponentCache.parse("<red><bold>Закрыть"))
+            closeButton.itemMeta = closeMeta
+            inventory.setItem(49, closeButton)
+            
+            player.openInventory(inventory)
         }
-        
-        val inventory = Bukkit.createInventory(
-            null,
-            54,
-            ComponentCache.parse("<gradient:#ff0000:#ff6b6b>📹 Мои Реплеи</gradient>")
-        )
-        
-        replays.take(45).forEachIndexed { index, replay ->
-            val item = createReplayItem(replay)
-            inventory.setItem(index, item)
-        }
-        
-        // Кнопка закрытия
-        val closeButton = ItemStack(Material.BARRIER)
-        val closeMeta = closeButton.itemMeta
-        closeMeta.displayName(ComponentCache.parse("<red><bold>Закрыть"))
-        closeButton.itemMeta = closeMeta
-        inventory.setItem(49, closeButton)
-        
-        player.openInventory(inventory)
     }
     
     /**
@@ -108,16 +114,18 @@ class ReplayViewerGUI(private val plugin: PvPKitsPlugin) {
      * Воспроизвести реплей (будущая фича)
      */
     fun playReplay(player: Player, replayId: String) {
-        val replay = plugin.replayManager.loadReplay(replayId)
-        
-        if (replay == null) {
-            player.sendMessage(ComponentCache.parse("<red>Реплей не найден"))
-            return
+        plugin.launch {
+            val replay = plugin.replayManager.loadReplay(replayId)
+            
+            if (replay == null) {
+                player.sendMessage(ComponentCache.parse("<red>Реплей не найден"))
+                return@launch
+            }
+            
+            player.sendMessage(ComponentCache.parse("<yellow>⚠ Просмотр реплеев в разработке"))
+            player.sendMessage(ComponentCache.parse("<gray>Реплей: ${replay.id}"))
+            player.sendMessage(ComponentCache.parse("<gray>Фреймов: ${replay.frames.size}"))
         }
-        
-        player.sendMessage(ComponentCache.parse("<yellow>⚠ Просмотр реплеев в разработке"))
-        player.sendMessage(ComponentCache.parse("<gray>Реплей: ${replay.id}"))
-        player.sendMessage(ComponentCache.parse("<gray>Фреймов: ${replay.frames.size}"))
         
         // TODO: Реализовать воспроизведение
         // - Телепортировать игрока на арену

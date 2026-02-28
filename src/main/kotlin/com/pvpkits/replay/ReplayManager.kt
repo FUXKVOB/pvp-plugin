@@ -47,7 +47,7 @@ class ReplayManager(private val plugin: PvPKitsPlugin) {
     fun stopRecording(matchId: String, winner: UUID) {
         val recorder = activeRecorders.remove(matchId) ?: return
         
-        plugin.launch {
+        CoroutineUtils.pluginScope.launch {
             val replayData = recorder.finish(winner)
             
             // Save to disk

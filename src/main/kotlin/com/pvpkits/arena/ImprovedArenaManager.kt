@@ -191,7 +191,7 @@ class ImprovedArenaManager(private val plugin: PvPKitsPlugin) {
         playerInstances.entries.removeIf { it.value == instance.instanceId }
         
         // Reset arena blocks
-        plugin.launch {
+        CoroutineUtils.pluginScope.launch {
             resetArena(instance)
         }
         
@@ -217,7 +217,7 @@ class ImprovedArenaManager(private val plugin: PvPKitsPlugin) {
         val maxZ = template.maxBounds.blockZ
         
         // Save blocks (async to avoid lag)
-        plugin.launch {
+        CoroutineUtils.pluginScope.launch {
             CoroutineUtils.io {
                 for (x in minX..maxX) {
                     for (y in minY..maxY) {

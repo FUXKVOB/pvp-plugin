@@ -123,7 +123,7 @@ enum class KillEffect(val displayName: String, val permission: String) {
     
     EXPLOSION("💥 Explosion", "pvpkits.cosmetic.kill.explosion") {
         override fun play(killer: Player, location: Location) {
-            location.world?.spawnParticle(Particle.EXPLOSION_LARGE, location, 3, 0.5, 0.5, 0.5, 0.0)
+            location.world?.spawnParticle(Particle.EXPLOSION, location, 3, 0.5, 0.5, 0.5, 0.0)
             location.world?.playSound(location, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f)
         }
     },
@@ -131,7 +131,7 @@ enum class KillEffect(val displayName: String, val permission: String) {
     BLOOD("🩸 Blood Splash", "pvpkits.cosmetic.kill.blood") {
         override fun play(killer: Player, location: Location) {
             location.world?.spawnParticle(
-                Particle.REDSTONE,
+                Particle.DUST,
                 location.add(0.0, 1.0, 0.0),
                 50,
                 0.5, 0.5, 0.5,
@@ -143,7 +143,7 @@ enum class KillEffect(val displayName: String, val permission: String) {
     
     FIREWORK("🎆 Firework", "pvpkits.cosmetic.kill.firework") {
         override fun play(killer: Player, location: Location) {
-            location.world?.spawnParticle(Particle.FIREWORKS_SPARK, location.add(0.0, 1.0, 0.0), 100, 0.5, 0.5, 0.5, 0.1)
+            location.world?.spawnParticle(Particle.FIREWORK, location.add(0.0, 1.0, 0.0), 100, 0.5, 0.5, 0.5, 0.1)
             location.world?.playSound(location, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f, 1.0f)
         }
     },
@@ -200,7 +200,7 @@ enum class TrailEffect(val displayName: String, val permission: String) {
         override fun update(player: Player) {
             val color = Color.fromRGB(java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f))
             player.world.spawnParticle(
-                Particle.REDSTONE,
+                Particle.DUST,
                 player.location.add(0.0, 0.1, 0.0),
                 3,
                 0.2, 0.1, 0.2,
@@ -239,7 +239,7 @@ enum class TrailEffect(val displayName: String, val permission: String) {
 enum class VictoryPose(val displayName: String, val permission: String) {
     CHAMPION("🏆 Champion", "pvpkits.cosmetic.victory.champion") {
         override fun play(player: Player) {
-            player.world.spawnParticle(Particle.TOTEM, player.location.add(0.0, 1.0, 0.0), 50, 0.5, 1.0, 0.5, 0.1)
+            player.world.spawnParticle(Particle.TOTEM_OF_UNDYING, player.location.add(0.0, 1.0, 0.0), 50, 0.5, 1.0, 0.5, 0.1)
             player.playSound(player.location, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f)
             player.sendTitle("§6§l⚔ VICTORY ⚔", "§eYou are the champion!", 10, 60, 20)
         }
@@ -249,7 +249,7 @@ enum class VictoryPose(val displayName: String, val permission: String) {
         override fun play(player: Player) {
             repeat(5) { i ->
                 player.server.scheduler.runTaskLater(player.server.pluginManager.getPlugin("PvPKits")!!, Runnable {
-                    player.world.spawnParticle(Particle.FIREWORKS_SPARK, player.location.add(0.0, 2.0, 0.0), 30, 0.5, 0.5, 0.5, 0.2)
+                    player.world.spawnParticle(Particle.FIREWORK, player.location.add(0.0, 2.0, 0.0), 30, 0.5, 0.5, 0.5, 0.2)
                     player.world.playSound(player.location, Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f, 1.0f + (i * 0.1f))
                 }, (i * 10L))
             }

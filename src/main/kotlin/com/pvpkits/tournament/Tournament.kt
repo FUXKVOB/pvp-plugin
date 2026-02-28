@@ -8,7 +8,7 @@ data class Tournament(
     val kitName: String,
     val maxPlayers: Int,
     val bracketType: BracketType,
-    val status: TournamentStatus,
+    var status: TournamentStatus,
     val participants: MutableSet<UUID> = mutableSetOf(),
     val matches: MutableList<TournamentMatch> = mutableListOf(),
     val winners: MutableList<UUID> = mutableListOf(),

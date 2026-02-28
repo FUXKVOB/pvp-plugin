@@ -77,7 +77,7 @@ class ReplayCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabCom
         if (args.size == 2 && args[0].lowercase() in listOf("view", "play")) {
             if (sender is Player) {
                 val replays = plugin.replayManager.getPlayerReplays(sender.uniqueId)
-                return replays.map { it.id.take(8) }
+                return replays.map { it.take(8) }
             }
         }
         

@@ -3,6 +3,7 @@ package com.pvpkits.scoreboard
 import com.pvpkits.PvPKitsPlugin
 import com.pvpkits.duel.DuelState
 import com.pvpkits.utils.SchedulerUtils
+import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.entity.Player
@@ -63,7 +64,7 @@ class ScoreboardManager(private val plugin: PvPKitsPlugin) {
     private fun setupLobbyScoreboard(player: Player) {
         val scoreboard = Bukkit.getScoreboardManager().newScoreboard
         val objective = scoreboard.registerNewObjective("pvpkits", "dummy", getAnimatedTitle())
-        objective.displaySlot = DisplaySlot.SIDEBAR
+        objective.displaySlot = org.bukkit.scoreboard.DisplaySlot.SIDEBAR
         
         // Create teams for each line
         val lines = listOf(
@@ -107,7 +108,7 @@ class ScoreboardManager(private val plugin: PvPKitsPlugin) {
     fun setupDuelScoreboard(player: Player, kitName: String, arenaName: String) {
         val scoreboard = Bukkit.getScoreboardManager().newScoreboard
         val objective = scoreboard.registerNewObjective("duel", "dummy", getAnimatedDuelTitle())
-        objective.displaySlot = DisplaySlot.SIDEBAR
+        objective.displaySlot = org.bukkit.scoreboard.DisplaySlot.SIDEBAR
         
         val duelMatch = plugin.duelManager.getPlayerMatch(player.uniqueId)
         val opponent = duelMatch?.let { Bukkit.getPlayer(it.getOpponent(player.uniqueId))?.name } ?: "???"

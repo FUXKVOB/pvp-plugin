@@ -16,6 +16,10 @@ class PartyManager(private val plugin: PvPKitsPlugin) {
     private val challenges = ConcurrentHashMap<UUID, DuelChallenge>() // challenger -> challenge
     private val pendingChallenges = ConcurrentHashMap<UUID, MutableList<DuelChallenge>>() // target -> challenges
     
+    // Party system (legacy - for group challenges)
+    private val parties = ConcurrentHashMap<UUID, Party>() // party ID -> party
+    private val playerParties = ConcurrentHashMap<UUID, UUID>() // player UUID -> party ID
+    
     /**
      * Challenge player to duel
      */
@@ -226,42 +230,38 @@ class PartyManager(private val plugin: PvPKitsPlugin) {
     }
     
     /**
-     * Cleanup player data
+     * Cleanup player data (challenges and party)
      */
     fun cleanupPlayer(uuid: UUID) {
-        // Remove as challenger
+        // Remove challenge data
         val challenge = challenges.remove(uuid)
         if (challenge != null) {
             pendingChallenges[challenge.target]?.remove(challenge)
         }
-        
-        // Remove as target
         pendingChallenges.remove(uuid)
+        
+        // Remove party data
+        val party = getPlayerParty(uuid)
+        if (party != null) {
+            if (party.leader == uuid) {
+                disbandParty(party)
+            } else {
+                party.members.remove(uuid)
+                playerParties.remove(uuid)
+                broadcastToParty(party, "<yellow>${plugin.server.getOfflinePlayer(uuid).name}</yellow> <gray>left (disconnected)")
+            }
+        }
     }
     
     /**
-     * Get memory stats
+     * Get memory stats for challenges
      */
-    fun getMemoryStats(): Map<String, Any> {
+    fun getChallengeStats(): Map<String, Any> {
         return mapOf(
             "active_challenges" to challenges.size,
             "total_pending" to pendingChallenges.values.sumOf { it.size }
         )
     }
-}
-
-/**
- * Duel challenge data
- */
-data class DuelChallenge(
-    val challenger: UUID,
-    val target: UUID,
-    val challengerName: String,
-    val targetName: String,
-    val kitName: String,
-    val createdAt: Long
-)
-
     
     /**
      * Create a new party
@@ -476,22 +476,6 @@ data class DuelChallenge(
     }
     
     /**
-     * Cleanup player data
-     */
-    fun cleanupPlayer(uuid: UUID) {
-        val party = getPlayerParty(uuid)
-        if (party != null) {
-            if (party.leader == uuid) {
-                disbandParty(party)
-            } else {
-                party.members.remove(uuid)
-                playerParties.remove(uuid)
-                broadcastToParty(party, "<yellow>${plugin.server.getOfflinePlayer(uuid).name}</yellow> <gray>left (disconnected)")
-            }
-        }
-    }
-    
-    /**
      * Get memory stats
      */
     fun getMemoryStats(): Map<String, Any> {
@@ -501,6 +485,18 @@ data class DuelChallenge(
         )
     }
 }
+
+/**
+ * Duel challenge data
+ */
+data class DuelChallenge(
+    val challenger: UUID,
+    val target: UUID,
+    val challengerName: String,
+    val targetName: String,
+    val kitName: String,
+    val createdAt: Long
+)
 
 /**
  * Party data class

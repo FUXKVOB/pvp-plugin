@@ -55,7 +55,7 @@ class MatchmakingManager(private val plugin: PvPKitsPlugin) {
             return false
         }
         
-        val rating = plugin.ratingManager.getRating(uuid)
+        val rating = plugin.ratingManager.getRating(uuid)?.rating ?: 1000
         val entry = QueueEntry(
             uuid = uuid,
             playerName = player.name,
@@ -177,7 +177,7 @@ class MatchmakingManager(private val plugin: PvPKitsPlugin) {
      */
     private fun calculateRatingRange(waitTimeMs: Long): Int {
         val expansion = (waitTimeMs / 10000) * RANGE_EXPANSION_PER_10S
-        return (BASE_RATING_RANGE + expansion).coerceAtMost(MAX_RATING_RANGE)
+        return (BASE_RATING_RANGE + expansion).toInt().coerceAtMost(MAX_RATING_RANGE)
     }
     
     /**

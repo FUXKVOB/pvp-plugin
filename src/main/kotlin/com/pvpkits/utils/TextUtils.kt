@@ -9,6 +9,13 @@ object TextUtils {
     private val legacySerializer = LegacyComponentSerializer.legacyAmpersand()
     
     /**
+     * Format text with MiniMessage - main method used everywhere
+     */
+    fun format(text: String): Component {
+        return parse(text)
+    }
+    
+    /**
      * Parse MiniMessage string to Component
      * Supports: <gradient>, <rainbow>, <color>, <hover>, <click>, etc.
      */

@@ -81,6 +81,13 @@ class EnhancedStatsManager(private val plugin: PvPKitsPlugin) {
     }
     
     /**
+     * Get database connection
+     */
+    fun getConnection(): Connection {
+        return connection
+    }
+    
+    /**
      * Record kit-specific stats
      */
     suspend fun recordKitStats(
