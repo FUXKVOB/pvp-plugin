@@ -3,11 +3,16 @@ package com.pvpkits
 import com.github.shynixn.mccoroutine.bukkit.SuspendingJavaPlugin
 import com.github.shynixn.mccoroutine.bukkit.launch
 import kotlinx.coroutines.delay
+import com.pvpkits.analytics.HeatmapCommand
+import com.pvpkits.analytics.HeatmapManager
 import com.pvpkits.arena.ArenaCommand
 import com.pvpkits.arena.ArenaManager
 import com.pvpkits.arena.ImprovedArenaManager
 import com.pvpkits.arena.LobbyManager
+import com.pvpkits.combat.CombatMechanicsManager
 import com.pvpkits.commands.KitCommand
+import com.pvpkits.database.BatchStatsManager
+import com.pvpkits.matchmaking.MatchmakingManager
 import com.pvpkits.cosmetics.CosmeticsCommand
 import com.pvpkits.cosmetics.CosmeticsManager
 import com.pvpkits.duel.DuelCommand
@@ -94,6 +99,18 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
     
     lateinit var enhancedStatsManager: EnhancedStatsManager
         private set
+    
+    lateinit var matchmakingManager: MatchmakingManager
+        private set
+    
+    lateinit var combatMechanicsManager: CombatMechanicsManager
+        private set
+    
+    lateinit var heatmapManager: HeatmapManager
+        private set
+    
+    lateinit var batchStatsManager: BatchStatsManager
+        private set
 
     override suspend fun onEnableAsync() {
         // Initialize coroutine scope for structured concurrency
@@ -176,6 +193,18 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
             enhancedStatsManager.initialize(statsManager.getConnection())
         }
         
+        // Initialize batch stats manager
+        batchStatsManager = BatchStatsManager(this)
+        
+        // Initialize matchmaking system
+        matchmakingManager = MatchmakingManager(this)
+        
+        // Initialize combat mechanics (1.21+)
+        combatMechanicsManager = CombatMechanicsManager(this)
+        
+        // Initialize heatmap analytics
+        heatmapManager = HeatmapManager(this)
+        
         val kitCommand = KitCommand(this)
         getCommand("kit")?.setExecutor(kitCommand)
         getCommand("kit")?.tabCompleter = kitCommand
@@ -243,6 +272,11 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         getCommand("cosmetics")?.setExecutor(cosmeticsCommand)
         getCommand("cosmetics")?.tabCompleter = cosmeticsCommand
         
+        // Register heatmap commands
+        val heatmapCommand = HeatmapCommand(this)
+        getCommand("heatmap")?.setExecutor(heatmapCommand)
+        getCommand("heatmap")?.tabCompleter = heatmapCommand
+        
         server.pluginManager.registerEvents(this, this)
         
         // Start cosmetics trail updater (every tick)
@@ -266,6 +300,11 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         val statsInfo = statsManager.getMemoryStats()
         val arenaStats = arenaManager.getMemoryStats()
         val improvedArenaStats = improvedArenaManager.getMemoryStats()
+        val matchmakingStats = matchmakingManager.getStats()
+        val combatStats = combatMechanicsManager.getStats()
+        val heatmapStats = heatmapManager.getGlobalStats()
+        val batchStats = batchStatsManager.getQueueStats()
+        
         logger.info("╔════════════════════════════════════╗")
         logger.info("║   PvPKits v${description.version} Enabled        ║")
         logger.info("║   Loaded ${memStats["kits_loaded"]} kits                  ║")
@@ -274,6 +313,10 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         logger.info("║   Arena Templates: ${improvedArenaStats["templates"]}              ║")
         logger.info("║   Worlds: ${worldManager.getArenaCount()} arenas loaded       ║")
         logger.info("║   Duels: ${duelManager.getActiveMatchCount()} active               ║")
+        logger.info("║   MMR Queue: ${matchmakingStats["total_in_queue"]} players          ║")
+        logger.info("║   Combat Tracking: ${combatStats["active_combos"]} combos      ║")
+        logger.info("║   Heatmap: ${heatmapStats["tracked_arenas"]} arenas tracked    ║")
+        logger.info("║   Batch Queue: ${batchStats["total_pending"]} pending         ║")
         logger.info("║   Spectator: ON                    ║")
         logger.info("║   Tournaments: ON                  ║")
         logger.info("║   ELO Rating: ON                   ║")
@@ -285,10 +328,14 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         logger.info("║   Java: ${System.getProperty("java.version")}             ║")
         logger.info("║   Kotlin 2.3.0 + Coroutines        ║")
         logger.info("║   Optimized: Caching + Memory Mgmt ║")
+        logger.info("║   Server: ${com.pvpkits.utils.FoliaSchedulerUtils.getServerInfo()}          ║")
         logger.info("╚════════════════════════════════════╝")
     }
 
     override suspend fun onDisableAsync() {
+        // Flush batch stats before shutdown
+        batchStatsManager.shutdown()
+        
         // Save stats before shutdown
         statsManager.saveStats()
         
@@ -316,6 +363,8 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
             tournamentManager.cleanupPlayer(player.uniqueId)
             partyManager.cleanupPlayer(player.uniqueId)
             cosmeticsManager.cleanupPlayer(player.uniqueId)
+            matchmakingManager.cleanupPlayer(player.uniqueId)
+            combatMechanicsManager.cleanupPlayer(player.uniqueId)
         }
         
         // Clear all caches

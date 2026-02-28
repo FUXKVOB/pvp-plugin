@@ -83,6 +83,11 @@ commands:
     description: Cosmetics menu
     usage: /cosmetics [kill|death|trail|victory|clear]
     aliases: [cosm, effects]
+  heatmap:
+    description: Arena heatmap analytics
+    usage: /heatmap <deaths|kills|stats|clear> <arena> [duration]
+    permission: pvpkits.heatmap
+    aliases: [heat, analytics]
 
 permissions:
   pvpkits.use:
@@ -118,3 +123,9 @@ permissions:
   pvpkits.cosmetic.victory.*:
     description: All victory poses
     default: true
+  pvpkits.heatmap:
+    description: View arena heatmaps
+    default: op
+  pvpkits.heatmap.clear:
+    description: Clear heatmap data
+    default: op
