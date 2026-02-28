@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useTransition, memo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { getPlayerAvatar, KIT_ICONS } from './types';
 import type { Player } from './types';
@@ -106,10 +106,14 @@ interface LeaderboardProps {
   currentUser: string | null;
 }
 
+// Memoized PlayerCard to prevent unnecessary re-renders
+const MemoizedPlayerCard = memo(PlayerCard);
+
 function Leaderboard({ players, currentUser }: LeaderboardProps) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedKit, setSelectedKit] = useState<string>('all');
+  const [isPending, startTransition] = useTransition();
 
   // Получаем все уникальные киты из данных игроков
   const availableKits = useMemo(() => {
@@ -145,6 +149,19 @@ function Leaderboard({ players, currentUser }: LeaderboardProps) {
     [players]
   );
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    startTransition(() => {
+      setSearchQuery(value);
+    });
+  };
+
+  const handleKitChange = (kit: string) => {
+    startTransition(() => {
+      setSelectedKit(kit);
+    });
+  };
+
   return (
     <div className="app">
       {/* Header */}
@@ -165,7 +182,7 @@ function Leaderboard({ players, currentUser }: LeaderboardProps) {
                 type="text" 
                 placeholder="Поиск игроков..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleSearchChange}
                 aria-label="Поиск игроков"
               />
             </div>
@@ -217,7 +234,7 @@ function Leaderboard({ players, currentUser }: LeaderboardProps) {
               </h2>
               <div className="top-players-grid">
                 {topPlayers.map((player, index) => (
-                  <PlayerCard 
+                  <MemoizedPlayerCard 
                     key={player.id} 
                     player={player} 
                     rank={index + 1}
@@ -233,7 +250,7 @@ function Leaderboard({ players, currentUser }: LeaderboardProps) {
               <div className="kit-filters">
                 <button 
                   className={`kit-filter-btn ${selectedKit === 'all' ? 'active' : ''}`}
-                  onClick={() => setSelectedKit('all')}
+                  onClick={() => handleKitChange('all')}
                   aria-label="Показать все режимы"
                 >
                   <span className="filter-text">Все режимы</span>
@@ -242,7 +259,7 @@ function Leaderboard({ players, currentUser }: LeaderboardProps) {
                   <button
                     key={kit}
                     className={`kit-filter-btn ${selectedKit === kit ? 'active' : ''}`}
-                    onClick={() => setSelectedKit(kit)}
+                    onClick={() => handleKitChange(kit)}
                     title={kit}
                   >
                     <img 
@@ -258,6 +275,22 @@ function Leaderboard({ players, currentUser }: LeaderboardProps) {
 
             {/* Player List */}
             <section className="leaderboard">
+              {isPending && (
+                <div style={{ 
+                  position: 'fixed', 
+                  top: '80px', 
+                  right: '20px', 
+                  padding: '12px 24px', 
+                  background: 'rgba(255, 255, 255, 0.1)', 
+                  borderRadius: '20px',
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  zIndex: 1000
+                }}>
+                  Обновление...
+                </div>
+              )}
               {filteredPlayers.length === 0 ? (
                 <div className="empty-leaderboard">
                   <div className="empty-leaderboard-content">
@@ -282,7 +315,7 @@ function Leaderboard({ players, currentUser }: LeaderboardProps) {
                   </div>
                   <div className="table-body">
                     {filteredPlayers.map((player, index) => (
-                      <PlayerCard 
+                      <MemoizedPlayerCard 
                         key={player.id} 
                         player={player} 
                         rank={index + 1}

@@ -193,3 +193,33 @@ kits:
       - "GOLDEN_APPLE 64"
       - "ENCHANTED_GOLDEN_APPLE 3"
       - "ENDER_PEARL 8"
+  
+  cart:
+    display-name: "<gradient:#ffaa00:#ff6600>🛤 Cart PvP</gradient>"
+    icon: "MINECART"
+    permission: "pvpkits.kit.cart"
+    cooldown: 60
+    description:
+      - "&7Mobile combat specialist"
+      - "&7with minecarts and rails"
+      - ""
+      - "&e⚔ Difficulty: &6Medium"
+      - "&e⭐ Style: &6Tactical"
+    items:
+      - "DIAMOND_SWORD{Enchantments:[{id:sharpness,lvl:5},{id:knockback,lvl:2},{id:unbreaking,lvl:3}]}"
+      - "CROSSBOW{Enchantments:[{id:quick_charge,lvl:3},{id:piercing,lvl:3},{id:unbreaking,lvl:3}]}"
+      - "ARROW 64"
+      - "MINECART 16"
+      - "POWERED_RAIL 64"
+      - "RAIL 64"
+      - "ACTIVATOR_RAIL 32"
+      - "REDSTONE_TORCH 16"
+      - "TNT_MINECART 8"
+      - "DIAMOND_HELMET{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "DIAMOND_CHESTPLATE{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "DIAMOND_LEGGINGS{Enchantments:[{id:protection,lvl:4},{id:unbreaking,lvl:3}]}"
+      - "DIAMOND_BOOTS{Enchantments:[{id:protection,lvl:4},{id:feather_falling,lvl:4},{id:depth_strider,lvl:3}]}"
+      - "GOLDEN_APPLE 32"
+      - "ENDER_PEARL 16"
+      - "COBWEB 8"
+      - "FLINT_AND_STEEL 1"

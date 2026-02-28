@@ -20,7 +20,9 @@ data class DuelMatch(
     var player1Wins: Int = 0,
     var player2Wins: Int = 0,
     var state: DuelState = DuelState.WAITING,
-    var startTime: Long = System.currentTimeMillis()
+    var startTime: Long = System.currentTimeMillis(),
+    val isTournamentMatch: Boolean = false,
+    val tournamentMatchId: String? = null
 ) {
     /**
      * Get opponent UUID

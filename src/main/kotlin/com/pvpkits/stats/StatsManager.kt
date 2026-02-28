@@ -380,6 +380,13 @@ class StatsManager(private val plugin: PvPKitsPlugin) {
         dbManager.shutdown()
     }
     
+    /**
+     * Get database connection for enhanced stats
+     */
+    fun getConnection(): java.sql.Connection {
+        return dbManager.getConnection()
+    }
+    
     private fun broadcastMessage(key: String, vararg args: String) {
         val message = plugin.config.getString("messages.$key") ?: return
         

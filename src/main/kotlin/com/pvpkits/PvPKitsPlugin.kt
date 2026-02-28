@@ -5,17 +5,31 @@ import com.github.shynixn.mccoroutine.bukkit.launch
 import kotlinx.coroutines.delay
 import com.pvpkits.arena.ArenaCommand
 import com.pvpkits.arena.ArenaManager
+import com.pvpkits.arena.ImprovedArenaManager
 import com.pvpkits.arena.LobbyManager
 import com.pvpkits.commands.KitCommand
+import com.pvpkits.cosmetics.CosmeticsCommand
+import com.pvpkits.cosmetics.CosmeticsManager
 import com.pvpkits.duel.DuelCommand
 import com.pvpkits.duel.DuelListener
 import com.pvpkits.duel.DuelManager
 import com.pvpkits.gui.KitGUI
 import com.pvpkits.nametag.NametagManager
+import com.pvpkits.party.PartyCommand
+import com.pvpkits.party.PartyManager
+import com.pvpkits.rating.RatingCommand
+import com.pvpkits.rating.RatingManager
+import com.pvpkits.replay.ReplayManager
 import com.pvpkits.scoreboard.ScoreboardManager
+import com.pvpkits.spectator.SpectatorCommand
+import com.pvpkits.spectator.SpectatorListener
+import com.pvpkits.spectator.SpectatorManager
+import com.pvpkits.stats.EnhancedStatsManager
 import com.pvpkits.stats.StatsCommand
 import com.pvpkits.stats.StatsListener
 import com.pvpkits.stats.StatsManager
+import com.pvpkits.tournament.TournamentCommand
+import com.pvpkits.tournament.TournamentManager
 import com.pvpkits.utils.TextUtils
 import com.pvpkits.utils.CoroutineUtils
 import com.pvpkits.world.WorldManager
@@ -48,6 +62,9 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
     lateinit var arenaManager: ArenaManager
         private set
     
+    lateinit var improvedArenaManager: ImprovedArenaManager
+        private set
+    
     lateinit var lobbyManager: LobbyManager
         private set
     
@@ -55,6 +72,27 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         private set
     
     lateinit var worldManager: WorldManager
+        private set
+    
+    lateinit var spectatorManager: SpectatorManager
+        private set
+    
+    lateinit var tournamentManager: TournamentManager
+        private set
+    
+    lateinit var ratingManager: RatingManager
+        private set
+    
+    lateinit var replayManager: ReplayManager
+        private set
+    
+    lateinit var cosmeticsManager: CosmeticsManager
+        private set
+    
+    lateinit var partyManager: PartyManager
+        private set
+    
+    lateinit var enhancedStatsManager: EnhancedStatsManager
         private set
 
     override suspend fun onEnableAsync() {
@@ -92,9 +130,13 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         scoreboardManager = ScoreboardManager(this)
         scoreboardManager.startAutoUpdate()
         
-        // Initialize arena system
+        // Initialize arena system (old)
         arenaManager = ArenaManager(this)
         arenaManager.loadArenas()
+        
+        // Initialize improved arena system (new)
+        improvedArenaManager = ImprovedArenaManager(this)
+        improvedArenaManager.loadTemplates()
         
         // Initialize lobby system
         lobbyManager = LobbyManager(this)
@@ -105,6 +147,34 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         
         // Register duel listener
         server.pluginManager.registerEvents(DuelListener(this), this)
+        
+        // Initialize spectator system
+        spectatorManager = SpectatorManager(this)
+        server.pluginManager.registerEvents(SpectatorListener(this), this)
+        
+        // Initialize tournament system
+        tournamentManager = TournamentManager(this)
+        
+        // Initialize rating system
+        ratingManager = RatingManager(this)
+        launch {
+            ratingManager.initialize()
+        }
+        
+        // Initialize replay system
+        replayManager = ReplayManager(this)
+        
+        // Initialize cosmetics system
+        cosmeticsManager = CosmeticsManager(this)
+        
+        // Initialize party system
+        partyManager = PartyManager(this)
+        
+        // Initialize enhanced stats
+        enhancedStatsManager = EnhancedStatsManager(this)
+        launch {
+            enhancedStatsManager.initialize(statsManager.getConnection())
+        }
         
         val kitCommand = KitCommand(this)
         getCommand("kit")?.setExecutor(kitCommand)
@@ -136,7 +206,54 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         getCommand("duelqueue")?.setExecutor(duelCommand)
         getCommand("duelqueue")?.tabCompleter = duelCommand
         
+        // Register spectator commands
+        val spectatorCommand = SpectatorCommand(this)
+        getCommand("spectate")?.setExecutor(spectatorCommand)
+        getCommand("spectate")?.tabCompleter = spectatorCommand
+        getCommand("spec")?.setExecutor(spectatorCommand)
+        getCommand("spec")?.tabCompleter = spectatorCommand
+        getCommand("stopspectating")?.setExecutor(spectatorCommand)
+        getCommand("stopspec")?.setExecutor(spectatorCommand)
+        
+        // Register tournament commands
+        val tournamentCommand = TournamentCommand(this)
+        getCommand("tournament")?.setExecutor(tournamentCommand)
+        getCommand("tournament")?.tabCompleter = tournamentCommand
+        
+        // Register rating commands
+        val ratingCommand = RatingCommand(this)
+        getCommand("rating")?.setExecutor(ratingCommand)
+        getCommand("rating")?.tabCompleter = ratingCommand
+        getCommand("elo")?.setExecutor(ratingCommand)
+        getCommand("elo")?.tabCompleter = ratingCommand
+        getCommand("leaderboard")?.setExecutor(ratingCommand)
+        getCommand("leaderboard")?.tabCompleter = ratingCommand
+        
+        // Register party/challenge commands
+        val partyCommand = PartyCommand(this)
+        getCommand("party")?.setExecutor(partyCommand)
+        getCommand("party")?.tabCompleter = partyCommand
+        getCommand("duel")?.setExecutor(partyCommand)
+        getCommand("duel")?.tabCompleter = partyCommand
+        getCommand("challenge")?.setExecutor(partyCommand)
+        getCommand("challenge")?.tabCompleter = partyCommand
+        
+        // Register cosmetics commands
+        val cosmeticsCommand = CosmeticsCommand(this)
+        getCommand("cosmetics")?.setExecutor(cosmeticsCommand)
+        getCommand("cosmetics")?.tabCompleter = cosmeticsCommand
+        
         server.pluginManager.registerEvents(this, this)
+        
+        // Start cosmetics trail updater (every tick)
+        server.scheduler.runTaskTimer(this, Runnable {
+            cosmeticsManager.updateTrails()
+        }, 0L, 1L)
+        
+        // Start party challenge cleanup (every 30 seconds)
+        server.scheduler.runTaskTimer(this, Runnable {
+            partyManager.cleanupExpired()
+        }, 600L, 600L)
         
         // Setup nametags and scoreboards for online players
         server.onlinePlayers.forEach { player ->
@@ -148,13 +265,21 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         val memStats = kitManager.getMemoryStats()
         val statsInfo = statsManager.getMemoryStats()
         val arenaStats = arenaManager.getMemoryStats()
+        val improvedArenaStats = improvedArenaManager.getMemoryStats()
         logger.info("╔════════════════════════════════════╗")
         logger.info("║   PvPKits v${description.version} Enabled        ║")
         logger.info("║   Loaded ${memStats["kits_loaded"]} kits                  ║")
         logger.info("║   Players tracked: ${statsInfo["total_players"]}            ║")
         logger.info("║   Arenas: ${arenaStats["arenas_loaded"]}                       ║")
+        logger.info("║   Arena Templates: ${improvedArenaStats["templates"]}              ║")
         logger.info("║   Worlds: ${worldManager.getArenaCount()} arenas loaded       ║")
         logger.info("║   Duels: ${duelManager.getActiveMatchCount()} active               ║")
+        logger.info("║   Spectator: ON                    ║")
+        logger.info("║   Tournaments: ON                  ║")
+        logger.info("║   ELO Rating: ON                   ║")
+        logger.info("║   Replays: ON                      ║")
+        logger.info("║   Cosmetics: ON                    ║")
+        logger.info("║   Party System: ON                 ║")
         logger.info("║   Nametags: ${if (config.getBoolean("nametag.enabled")) "ON" else "OFF"}               ║")
         logger.info("║   Stats: ${if (config.getBoolean("stats.enabled")) "ON" else "OFF"}                  ║")
         logger.info("║   Java: ${System.getProperty("java.version")}             ║")
@@ -169,9 +294,11 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         
         // Shutdown database
         statsManager.shutdown()
+        ratingManager.shutdown()
         
         // Save arenas
         arenaManager.saveArenas()
+        improvedArenaManager.saveTemplates()
         
         // Clean up all coroutines to prevent memory leaks
         CoroutineUtils.cancelPluginScope()
@@ -182,8 +309,13 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
             kitGUI.cleanup(player)
             scoreboardManager.removeScoreboard(player)
             arenaManager.cleanupPlayer(player.uniqueId)
+            improvedArenaManager.cleanupPlayer(player.uniqueId)
             lobbyManager.cleanupPlayer(player.uniqueId)
             duelManager.cleanupPlayer(player.uniqueId)
+            spectatorManager.cleanupPlayer(player.uniqueId)
+            tournamentManager.cleanupPlayer(player.uniqueId)
+            partyManager.cleanupPlayer(player.uniqueId)
+            cosmeticsManager.cleanupPlayer(player.uniqueId)
         }
         
         // Clear all caches
@@ -290,5 +422,9 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         arenaManager.cleanupPlayer(player.uniqueId)
         lobbyManager.cleanupPlayer(player.uniqueId)
         duelManager.cleanupPlayer(player.uniqueId)
+        spectatorManager.cleanupPlayer(player.uniqueId)
+        tournamentManager.cleanupPlayer(player.uniqueId)
+        partyManager.cleanupPlayer(player.uniqueId)
+        cosmeticsManager.cleanupPlayer(player.uniqueId)
     }
 }

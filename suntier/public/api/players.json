@@ -2,10 +2,53 @@
   {
     "id": "1772112035429",
     "username": "supminer",
-    "score": 2,
+    "score": 15,
     "rank": 1,
     "kits": {
-      "Mace": "HT1"
+      "Mace": "HT1",
+      "Sword": "HT2",
+      "Axe": "MT1"
+    }
+  },
+  {
+    "id": "1772112035430",
+    "username": "DarkPhoenix",
+    "score": 12,
+    "rank": 2,
+    "kits": {
+      "Sword": "HT1",
+      "UHC": "HT2"
+    }
+  },
+  {
+    "id": "1772112035431",
+    "username": "NinjaStrike",
+    "score": 9,
+    "rank": 3,
+    "kits": {
+      "Axe": "HT1",
+      "Mace": "MT1",
+      "Potion": "LT1"
+    }
+  },
+  {
+    "id": "1772112035432",
+    "username": "CrystalMage",
+    "score": 6,
+    "rank": 4,
+    "kits": {
+      "Crystal": "HT2",
+      "Sword": "MT2"
+    }
+  },
+  {
+    "id": "1772112035433",
+    "username": "ShadowBlade",
+    "score": 4,
+    "rank": 5,
+    "kits": {
+      "Sword": "MT1",
+      "Axe": "LT1"
     }
   }
 ]

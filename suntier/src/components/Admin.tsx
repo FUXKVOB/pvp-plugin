@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Player, TierRank } from '../types';
-import { KIT_ICONS, TIER_CONFIGS } from '../types';
+import { KIT_ICONS } from '../types';
 import './Admin.css';
 
 interface AdminProps {
   onLogout: () => void;
+}
+
+interface AdminUser {
+  id: number;
+  username: string;
+  is_active: number;
+  created_at: string;
+  last_login: string | null;
 }
 
 const AVAILABLE_KITS = ['Crystal', 'Mace', 'Sword', 'Axe', 'UHC', 'Potion'];
@@ -17,9 +25,17 @@ export const Admin: React.FC<AdminProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [newPlayerUsername, setNewPlayerUsername] = useState('');
+  
+  // Admin management state
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [newAdminUsername, setNewAdminUsername] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [stats, setStats] = useState({ playerCount: 0, kitDistribution: [] as any[] });
 
   useEffect(() => {
     loadPlayers();
+    loadStats();
   }, []);
 
   const loadPlayers = async () => {
@@ -36,81 +52,166 @@ export const Admin: React.FC<AdminProps> = ({ onLogout }) => {
     }
   };
 
-  const saveToFile = async (data: Player[]) => {
+  const loadStats = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/players', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save players');
+      const response = await fetch('http://localhost:3001/api/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
       }
-
-      const result = await response.json();
-      console.log('✅ Данные успешно сохранены:', result);
-      
-      // Показываем уведомление об успехе
-      alert('✅ Данные успешно сохранены!');
     } catch (error) {
-      console.error('❌ Ошибка сохранения:', error);
-      alert('❌ Ошибка сохранения данных. Проверьте, что сервер запущен (npm run server)');
+      console.error('Error loading stats:', error);
     }
   };
 
-  const calculateScore = (kits: { [key: string]: TierRank }): number => {
-    return Object.values(kits).reduce((sum, tier) => {
-      const config = TIER_CONFIGS.find(t => t.rank === tier);
-      return sum + (config?.position || 0);
-    }, 0);
+  const loadAdmins = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/admin/users');
+      if (response.ok) {
+        const data = await response.json();
+        setAdmins(data);
+      }
+    } catch (error) {
+      console.error('Error loading admins:', error);
+    }
   };
 
-  const handleAddPlayer = () => {
+  // Score is now calculated on the server
+
+  const handleAddPlayer = async () => {
     if (!newPlayerUsername.trim()) return;
 
-    const newPlayer: Player = {
-      id: Date.now().toString(),
-      username: newPlayerUsername.trim(),
-      score: 0,
-      rank: players.length + 1,
-      kits: {}
-    };
+    try {
+      const response = await fetch('http://localhost:3001/api/players', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newPlayerUsername.trim() })
+      });
 
-    const updatedPlayers = [...players, newPlayer];
-    setPlayers(updatedPlayers);
-    setNewPlayerUsername('');
-    saveToFile(updatedPlayers);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create player');
+      }
+
+      await loadPlayers();
+      setNewPlayerUsername('');
+      alert('✅ Игрок успешно добавлен!');
+    } catch (error: any) {
+      console.error('Error adding player:', error);
+      alert('❌ ' + error.message);
+    }
   };
 
-  const handleDeletePlayer = (playerId: string) => {
+  const handleDeletePlayer = async (playerId: string) => {
     if (!confirm('Удалить этого игрока?')) return;
     
-    const updatedPlayers = players.filter(p => p.id !== playerId);
-    setPlayers(updatedPlayers);
-    saveToFile(updatedPlayers);
+    try {
+      const response = await fetch(`http://localhost:3001/api/players/${playerId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete player');
+      }
+
+      await loadPlayers();
+      alert('✅ Игрок удален!');
+    } catch (error) {
+      console.error('Error deleting player:', error);
+      alert('❌ Ошибка при удалении игрока');
+    }
   };
 
   const handleEditPlayer = (player: Player) => {
     setEditingPlayer({ ...player });
   };
 
-  const handleSavePlayer = () => {
+  const handleSavePlayer = async () => {
     if (!editingPlayer) return;
 
-    const score = calculateScore(editingPlayer.kits);
-    const updatedPlayer = { ...editingPlayer, score };
-    
-    const updatedPlayers = players.map(p => 
-      p.id === editingPlayer.id ? updatedPlayer : p
-    ).sort((a, b) => b.score - a.score)
-      .map((p, index) => ({ ...p, rank: index + 1 }));
+    try {
+      const response = await fetch(`http://localhost:3001/api/players/${editingPlayer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: editingPlayer.username,
+          kits: editingPlayer.kits
+        })
+      });
 
-    setPlayers(updatedPlayers);
-    setEditingPlayer(null);
-    saveToFile(updatedPlayers);
+      if (!response.ok) {
+        throw new Error('Failed to update player');
+      }
+
+      await loadPlayers();
+      setEditingPlayer(null);
+      alert('✅ Изменения сохранены!');
+    } catch (error) {
+      console.error('Error saving player:', error);
+      alert('❌ Ошибка при сохранении');
+    }
+  };
+
+  // Admin management functions
+  const handleShowAdminPanel = async () => {
+    await loadAdmins();
+    setShowAdminPanel(true);
+  };
+
+  const handleCreateAdmin = async () => {
+    if (!newAdminUsername.trim() || !newAdminPassword.trim()) {
+      alert('Введите логин и пароль');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:3001/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: newAdminUsername.trim(),
+          password: newAdminPassword
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create admin');
+      }
+
+      await loadAdmins();
+      setNewAdminUsername('');
+      setNewAdminPassword('');
+      alert('✅ Администратор создан!');
+    } catch (error: any) {
+      alert('❌ ' + error.message);
+    }
+  };
+
+  const handleToggleAdmin = async (id: number, isActive: boolean) => {
+    try {
+      await fetch(`http://localhost:3001/api/admin/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive })
+      });
+      await loadAdmins();
+    } catch (error) {
+      console.error('Error toggling admin:', error);
+    }
+  };
+
+  const handleDeleteAdmin = async (id: number) => {
+    if (!confirm('Удалить этого администратора?')) return;
+
+    try {
+      await fetch(`http://localhost:3001/api/admin/users/${id}`, {
+        method: 'DELETE'
+      });
+      await loadAdmins();
+    } catch (error) {
+      console.error('Error deleting admin:', error);
+    }
   };
 
   const handleAddKit = (kitName: string) => {
@@ -171,6 +272,9 @@ export const Admin: React.FC<AdminProps> = ({ onLogout }) => {
           <button onClick={handleExport} className="btn-export">
             Экспорт JSON
           </button>
+          <button onClick={handleShowAdminPanel} className="btn-export">
+            Управление админами
+          </button>
           <button onClick={() => navigate('/')} className="btn-back">
             На главную
           </button>
@@ -178,6 +282,12 @@ export const Admin: React.FC<AdminProps> = ({ onLogout }) => {
             Выйти
           </button>
         </div>
+      </div>
+
+      {/* Statistics */}
+      <div className="stats-section" style={{ marginBottom: '24px', padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <h3 style={{ marginBottom: '12px', color: '#fff' }}>Статистика</h3>
+        <p style={{ color: 'rgba(255,255,255,0.7)' }}>Всего игроков: <strong style={{ color: '#fff' }}>{stats.playerCount}</strong></p>
       </div>
 
       <div className="admin-content">
@@ -239,6 +349,88 @@ export const Admin: React.FC<AdminProps> = ({ onLogout }) => {
           )}
         </div>
       </div>
+
+      {/* Admin Management Modal */}
+      {showAdminPanel && (
+        <div className="modal-overlay" onClick={() => setShowAdminPanel(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2>Управление администраторами</h2>
+              <button onClick={() => setShowAdminPanel(false)} className="btn-close">
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {/* Create new admin */}
+              <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                <h4 style={{ marginBottom: '12px', color: '#fff' }}>Создать администратора</h4>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    placeholder="Логин"
+                    value={newAdminUsername}
+                    onChange={(e) => setNewAdminUsername(e.target.value)}
+                    style={{ flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', minWidth: '120px' }}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Пароль"
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    style={{ flex: 1, padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', minWidth: '120px' }}
+                  />
+                  <button onClick={handleCreateAdmin} className="btn-add" style={{ padding: '10px 20px' }}>
+                    Создать
+                  </button>
+                </div>
+              </div>
+
+              {/* Admin list */}
+              <div>
+                <h4 style={{ marginBottom: '12px', color: '#fff' }}>Список администраторов</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {admins.map(admin => (
+                    <div key={admin.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div>
+                        <span style={{ color: '#fff', fontWeight: 600 }}>{admin.username}</span>
+                        <span style={{ color: admin.is_active ? '#7BED9F' : '#FF6B6B', marginLeft: '12px', fontSize: '12px' }}>
+                          {admin.is_active ? 'Активен' : 'Неактивен'}
+                        </span>
+                        {admin.last_login && (
+                          <span style={{ color: 'rgba(255,255,255,0.4)', marginLeft: '12px', fontSize: '12px' }}>
+                            Последний вход: {new Date(admin.last_login).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleToggleAdmin(admin.id, !admin.is_active)}
+                          style={{ padding: '6px 12px', background: admin.is_active ? 'rgba(255,107,107,0.2)' : 'rgba(123,237,159,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: '#fff', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          {admin.is_active ? 'Деактивировать' : 'Активировать'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAdmin(admin.id)}
+                          style={{ padding: '6px 12px', background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: '6px', color: '#ff8080', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button onClick={() => setShowAdminPanel(false)} className="btn-cancel">
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editingPlayer && (
         <div className="modal-overlay" onClick={() => setEditingPlayer(null)}>

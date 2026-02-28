@@ -51,6 +51,38 @@ commands:
     description: Quick join duel queue
     usage: /duelqueue <kit>
     aliases: [dq]
+  spectate:
+    description: Spectate a player
+    usage: /spectate <player>
+    aliases: [spec]
+  stopspectating:
+    description: Stop spectating
+    usage: /stopspectating
+    aliases: [stopspec]
+  tournament:
+    description: Tournament commands
+    usage: /tournament <create|join|leave|start|list|info>
+    aliases: [tourney, tourn]
+  rating:
+    description: View ELO rating
+    usage: /rating [player]
+    aliases: [elo]
+  leaderboard:
+    description: View rating leaderboard
+    usage: /leaderboard
+    aliases: [lb, ranks]
+  party:
+    description: Duel challenge commands
+    usage: /party <challenge|accept|deny|cancel|list>
+    aliases: [p]
+  challenge:
+    description: Quick challenge player to duel
+    usage: /challenge <player> <kit>
+    aliases: [ch]
+  cosmetics:
+    description: Cosmetics menu
+    usage: /cosmetics [kill|death|trail|victory|clear]
+    aliases: [cosm, effects]
 
 permissions:
   pvpkits.use:
@@ -62,3 +94,27 @@ permissions:
   pvpkits.stats.others:
     description: View other players' stats
     default: op
+  pvpkits.spectate:
+    description: Spectate players
+    default: true
+  pvpkits.tournament.create:
+    description: Create tournaments
+    default: op
+  pvpkits.tournament.start:
+    description: Start tournaments
+    default: op
+  pvpkits.rating.others:
+    description: View other players' ratings
+    default: op
+  pvpkits.cosmetic.kill.*:
+    description: All kill effects
+    default: true
+  pvpkits.cosmetic.death.*:
+    description: All death animations
+    default: true
+  pvpkits.cosmetic.trail.*:
+    description: All trail effects
+    default: true
+  pvpkits.cosmetic.victory.*:
+    description: All victory poses
+    default: true

@@ -156,11 +156,47 @@ class DuelManager(private val plugin: PvPKitsPlugin) {
      */
     private fun startMatch(player1: Player, entry2: DuelQueueEntry, kitName: String) {
         val player2 = Bukkit.getPlayer(entry2.uuid) ?: return
+        startDirectDuel(player1, player2, kitName)
+    }
+    
+    /**
+     * Start direct duel between two players (for challenges)
+     */
+    fun startDirectDuel(player1: Player, player2: Player, kitName: String) {
+        // Try to get arena instance from improved arena manager
+        val arenaInstance = plugin.improvedArenaManager.getAvailableInstance(kitName)
         
-        // Get available spawns from arena worlds
+        if (arenaInstance != null) {
+            // Use improved arena system
+            val matchId = "${player1.uniqueId}_${System.currentTimeMillis()}"
+            
+            val match = DuelMatch(
+                id = matchId,
+                player1 = player1.uniqueId,
+                player2 = player2.uniqueId,
+                kitName = kitName,
+                spawn1 = arenaInstance.template.spawn1,
+                spawn2 = arenaInstance.template.spawn2
+            )
+            
+            matches[matchId] = match
+            playerMatches[player1.uniqueId] = match
+            playerMatches[player2.uniqueId] = match
+            
+            // Start match in arena instance
+            plugin.improvedArenaManager.startMatch(arenaInstance, player1, player2)
+            
+            // Notify players
+            notifyMatchFound(player1, player2, kitName)
+            
+            // Start countdown
+            startCountdown(match)
+            return
+        }
+        
+        // Fallback to old system
         var spawns = plugin.worldManager.getRandomArenaWithSpawns()?.second
         
-        // Fallback to duelSpawns list
         if (spawns == null) {
             spawns = duelSpawns.firstOrNull()
         }
@@ -369,6 +405,19 @@ class DuelManager(private val plugin: PvPKitsPlugin) {
             plugin.statsManager.recordKill(winner.uniqueId, winner.name, loserUUID, loser?.name ?: "Unknown")
         }
         
+        // Handle tournament match end
+        if (match.isTournamentMatch) {
+            handleTournamentMatchEnd(match)
+        }
+        
+        // End arena instance if using improved arena system
+        if (winner != null) {
+            val arenaInstance = plugin.improvedArenaManager.getPlayerInstance(winner)
+            if (arenaInstance != null) {
+                plugin.improvedArenaManager.endMatch(arenaInstance)
+            }
+        }
+        
         // Teleport players out using Folia-compatible scheduler
         SchedulerUtils.runTaskLater(plugin, (5 * 20).toLong(), Runnable {
             winner?.teleport(Bukkit.getWorlds().first().spawnLocation)
@@ -437,6 +486,58 @@ class DuelManager(private val plugin: PvPKitsPlugin) {
             append("${ChatColor.YELLOW}Players in queues: ${ChatColor.WHITE}${playerQueues.size}\n")
             append("${ChatColor.YELLOW}Active matches: ${ChatColor.WHITE}${matches.size}\n")
             append("${ChatColor.GOLD}═════════════════════════════")
+        }
+    }
+    
+    /**
+     * Start a tournament match (called by TournamentManager)
+     */
+    fun startTournamentMatch(player1: Player, player2: Player, kitName: String, tournamentMatchId: String) {
+        // Get available spawns
+        var spawns = plugin.worldManager.getRandomArenaWithSpawns()?.second
+        
+        if (spawns == null) {
+            spawns = duelSpawns.firstOrNull()
+        }
+        
+        if (spawns == null) {
+            plugin.logger.warning("No arena available for tournament match!")
+            return
+        }
+        
+        val matchId = "tournament_$tournamentMatchId"
+        
+        val match = DuelMatch(
+            id = matchId,
+            player1 = player1.uniqueId,
+            player2 = player2.uniqueId,
+            kitName = kitName,
+            spawn1 = spawns.first,
+            spawn2 = spawns.second,
+            isTournamentMatch = true,
+            tournamentMatchId = tournamentMatchId
+        )
+        
+        matches[matchId] = match
+        playerMatches[player1.uniqueId] = match
+        playerMatches[player2.uniqueId] = match
+        
+        // Notify players
+        notifyMatchFound(player1, player2, kitName)
+        
+        // Start countdown
+        startCountdown(match)
+    }
+    
+    /**
+     * Handle tournament match end
+     */
+    private fun handleTournamentMatchEnd(match: DuelMatch) {
+        val winnerUUID = match.getWinner() ?: return
+        
+        // Notify tournament manager
+        match.tournamentMatchId?.let { tournamentMatchId ->
+            plugin.tournamentManager.handleMatchComplete(tournamentMatchId, winnerUUID)
         }
     }
 }

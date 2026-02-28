@@ -46,6 +46,7 @@ class ArenaCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
             "setspawn" -> setSpawn(sender, args)
             "setlobby" -> setLobby(sender, args)
             "enable", "disable" -> toggleArena(sender, args)
+            "template" -> handleTemplate(sender, args)
             else -> sendArenaHelp(sender)
         }
     }
@@ -60,6 +61,11 @@ class ArenaCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
         sender.sendMessage("${ChatColor.YELLOW}/arena setspawn <name> ${ChatColor.GRAY}- Add spawn point")
         sender.sendMessage("${ChatColor.YELLOW}/arena setlobby <name> ${ChatColor.GRAY}- Set lobby spawn")
         sender.sendMessage("${ChatColor.YELLOW}/arena enable/disable <name> ${ChatColor.GRAY}- Toggle arena")
+        sender.sendMessage("${ChatColor.GOLD}═══════════════════════════════")
+        sender.sendMessage("${ChatColor.AQUA}New Template System:")
+        sender.sendMessage("${ChatColor.YELLOW}/arena template create <name> ${ChatColor.GRAY}- Create template")
+        sender.sendMessage("${ChatColor.YELLOW}/arena template list ${ChatColor.GRAY}- List templates")
+        sender.sendMessage("${ChatColor.YELLOW}/arena template info <name> ${ChatColor.GRAY}- Template info")
         sender.sendMessage("${ChatColor.GOLD}═══════════════════════════════")
         sender.sendMessage("")
     }
@@ -233,11 +239,126 @@ class ArenaCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
         listArenas(sender)
     }
     
+    private fun handleTemplate(sender: CommandSender, args: Array<out String>) {
+        if (args.size < 2) {
+            sender.sendMessage("${ChatColor.RED}Usage: /arena template <create|list|info|delete>")
+            return
+        }
+        
+        when (args[1].lowercase()) {
+            "create" -> createTemplate(sender, args)
+            "list" -> listTemplates(sender)
+            "info" -> templateInfo(sender, args)
+            "delete" -> deleteTemplate(sender, args)
+            else -> sender.sendMessage("${ChatColor.RED}Unknown template command!")
+        }
+    }
+    
+    private fun createTemplate(sender: CommandSender, args: Array<out String>) {
+        val player = sender as? Player
+        if (player == null) {
+            sender.sendMessage("${ChatColor.RED}This command can only be used by players!")
+            return
+        }
+        
+        if (args.size < 3) {
+            sender.sendMessage("${ChatColor.RED}Usage: /arena template create <name>")
+            sender.sendMessage("${ChatColor.GRAY}Stand at spawn1, then use this command")
+            sender.sendMessage("${ChatColor.GRAY}You'll be prompted to set spawn2 and bounds")
+            return
+        }
+        
+        val name = args[2]
+        
+        if (plugin.improvedArenaManager.getTemplate(name) != null) {
+            sender.sendMessage("${ChatColor.RED}Template '$name' already exists!")
+            return
+        }
+        
+        // Store player's location as spawn1
+        val spawn1 = player.location.clone()
+        
+        sender.sendMessage("${ChatColor.GREEN}Spawn 1 set at your location!")
+        sender.sendMessage("${ChatColor.YELLOW}Move to spawn 2 location and type: ${ChatColor.WHITE}/arena template setspawn2 $name")
+    }
+    
+    private fun listTemplates(sender: CommandSender) {
+        val templates = plugin.improvedArenaManager.getAllTemplates()
+        
+        if (templates.isEmpty()) {
+            sender.sendMessage("${ChatColor.YELLOW}No arena templates created yet!")
+            sender.sendMessage("${ChatColor.GRAY}Create one with: ${ChatColor.WHITE}/arena template create <name>")
+            return
+        }
+        
+        sender.sendMessage("")
+        sender.sendMessage("${ChatColor.GOLD}════════ Arena Templates ════════")
+        templates.forEach { template ->
+            val status = if (template.enabled) "${ChatColor.GREEN}✓" else "${ChatColor.RED}✗"
+            val stats = plugin.improvedArenaManager.getMemoryStats()
+            sender.sendMessage("$status ${ChatColor.YELLOW}${template.displayName} ${ChatColor.GRAY}(${template.worldName})")
+        }
+        sender.sendMessage("${ChatColor.GRAY}Active instances: ${ChatColor.WHITE}${plugin.improvedArenaManager.getMemoryStats()["active_instances"]}")
+        sender.sendMessage("${ChatColor.GOLD}═════════════════════════════════")
+        sender.sendMessage("")
+    }
+    
+    private fun templateInfo(sender: CommandSender, args: Array<out String>) {
+        if (args.size < 3) {
+            sender.sendMessage("${ChatColor.RED}Usage: /arena template info <name>")
+            return
+        }
+        
+        val template = plugin.improvedArenaManager.getTemplate(args[2])
+        if (template == null) {
+            sender.sendMessage("${ChatColor.RED}Template not found!")
+            return
+        }
+        
+        val (dx, dy, dz) = template.getBoundsSize()
+        
+        sender.sendMessage("")
+        sender.sendMessage("${ChatColor.GOLD}════════ ${template.displayName} ════════")
+        sender.sendMessage("${ChatColor.YELLOW}Status: ${if (template.enabled) "${ChatColor.GREEN}Enabled" else "${ChatColor.RED}Disabled"}")
+        sender.sendMessage("${ChatColor.YELLOW}World: ${ChatColor.WHITE}${template.worldName}")
+        sender.sendMessage("${ChatColor.YELLOW}Bounds: ${ChatColor.WHITE}${dx}x${dy}x${dz}")
+        sender.sendMessage("${ChatColor.YELLOW}Spawn 1: ${ChatColor.WHITE}${template.spawn1.blockX}, ${template.spawn1.blockY}, ${template.spawn1.blockZ}")
+        sender.sendMessage("${ChatColor.YELLOW}Spawn 2: ${ChatColor.WHITE}${template.spawn2.blockX}, ${template.spawn2.blockY}, ${template.spawn2.blockZ}")
+        if (template.allowedKits.isNotEmpty()) {
+            sender.sendMessage("${ChatColor.YELLOW}Allowed Kits: ${ChatColor.WHITE}${template.allowedKits.joinToString(", ")}")
+        }
+        sender.sendMessage("${ChatColor.GOLD}═══════════════════════════════")
+        sender.sendMessage("")
+    }
+    
+    private fun deleteTemplate(sender: CommandSender, args: Array<out String>) {
+        if (args.size < 3) {
+            sender.sendMessage("${ChatColor.RED}Usage: /arena template delete <name>")
+            return
+        }
+        
+        val name = args[2]
+        
+        if (plugin.improvedArenaManager.deleteTemplate(name)) {
+            sender.sendMessage("${ChatColor.GREEN}Template '$name' deleted!")
+        } else {
+            sender.sendMessage("${ChatColor.RED}Template '$name' not found!")
+        }
+    }
+    
     override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): List<String> {
         return when {
             command.name.lowercase() == "arena" && args.size == 1 -> {
-                listOf("create", "delete", "list", "info", "setspawn", "setlobby", "enable", "disable")
+                listOf("create", "delete", "list", "info", "setspawn", "setlobby", "enable", "disable", "template")
                     .filter { it.startsWith(args[0], ignoreCase = true) }
+            }
+            command.name.lowercase() == "arena" && args.size == 2 && args[0].lowercase() == "template" -> {
+                listOf("create", "list", "info", "delete")
+                    .filter { it.startsWith(args[1], ignoreCase = true) }
+            }
+            command.name.lowercase() == "arena" && args.size == 3 && args[0].lowercase() == "template" && args[1].lowercase() in listOf("info", "delete") -> {
+                plugin.improvedArenaManager.getAllTemplates().map { it.name }
+                    .filter { it.startsWith(args[2], ignoreCase = true) }
             }
             command.name.lowercase() == "arena" && args.size == 2 && args[0].lowercase() in listOf("delete", "info", "enable", "disable", "setspawn") -> {
                 plugin.arenaManager.getAllArenas().map { it.name }
