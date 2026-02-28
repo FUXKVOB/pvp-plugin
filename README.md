@@ -1,4 +1,4 @@
-# PvPKits Plugin v2.1
+# PvPKits Plugin v1.0
 
 🎮 Продвинутый PvP плагин с китами для Minecraft 1.21.8 на Kotlin 2.3 + Java 21
 
@@ -104,7 +104,7 @@ clear-inventory: true
 - **Caffeine** - продвинутое кэширование
 - **SQLite** - встроенная БД
 
-## 📊 Производительность v2.1
+## 📊 Производительность v1.0
 
 - ✅ Правильная загрузка миров (не генерирует новые)
 - ✅ HikariCP pool: 3 connections (оптимально для SQLite)
@@ -115,7 +115,7 @@ clear-inventory: true
 
 ## 📝 Changelog
 
-### v2.1.0 (2026) - Performance Update
+### v1.0.0 (2026) - Initial Release
 - 🔧 FIXED: Загрузка миров из вложенных папок
 - ⚡ NEW: ComponentCache для MiniMessage
 - ⚡ NEW: Leaderboard caching
@@ -123,7 +123,7 @@ clear-inventory: true
 - 🎯 IMPROVED: GUI performance
 - 🐛 FIXED: Memory leaks prevention
 
-### v2.0.0 (2026) - Modern Edition
+
 - ✨ MiniMessage поддержка
 - ⚡ Kotlin Coroutines
 - 🚀 Java 21 support

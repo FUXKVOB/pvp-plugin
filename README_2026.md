@@ -1,4 +1,4 @@
-# 🚀 PvPKits v2.0 - 2026 Edition
+# 🚀 PvPKits v1.0 - 2026 Edition
 
 > Продвинутый PvP плагин с современным стеком технологий для Minecraft 1.21.8
 
@@ -360,13 +360,13 @@ MIT License - see [LICENSE](LICENSE) for details
 
 ## 🎯 Roadmap
 
-### v2.1.0 (Q2 2026)
+### v1.1.0 (Q2 2026)
 - [ ] Replay playback система
 - [ ] Advanced heatmap visualization
 - [ ] Discord webhook integration
 - [ ] PlaceholderAPI support
 
-### v2.2.0 (Q3 2026)
+### v1.2.0 (Q3 2026)
 - [ ] Seasonal rating system
 - [ ] Daily quests
 - [ ] Advanced analytics dashboard

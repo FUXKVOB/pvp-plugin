@@ -1,4 +1,4 @@
-# 🚀 PvPKits v2.2 - Полное руководство 2026
+# 🚀 PvPKits v1.0 - Полное руководство 2026
 
 ## Обзор всех систем
 
@@ -782,7 +782,7 @@ enhanced-stats:
 
 ---
 
-**Made with ❤️ for PvPKits v2.2 - 2026 Edition**
+**Made with ❤️ for PvPKits v1.0 - 2026 Edition**
 
 
 ---
@@ -971,7 +971,7 @@ pvpkits.cosmetic.victory.champion: true
 
 ---
 
-**Made with ❤️ for PvPKits v2.2 - 2026 Edition**
+**Made with ❤️ for PvPKits v1.0 - 2026 Edition**
 
 
 ---
@@ -1481,3 +1481,4 @@ folia:
 ---
 
 **PvPKits v2.0 - Полностью готов к 2026 году! 🚀**
+

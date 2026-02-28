@@ -472,3 +472,4 @@ https://bstats.org/ - статистика использования плаги
 ---
 
 **Made with ❤️ for PvPKits 2026 Edition**
+

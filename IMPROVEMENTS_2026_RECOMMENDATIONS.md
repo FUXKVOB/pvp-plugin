@@ -620,3 +620,4 @@ class WebAPIServer(private val plugin: PvPKitsPlugin) {
 5. **Web API** - интеграция с сайтом
 
 Проект готов к 2026 году! 🚀
+

@@ -533,7 +533,7 @@ PvPKitsPlugin (main)
 
 ## 📄 Changelog
 
-### v2.1.0 (2026) - Performance Update
+### v1.0.0 (2026) - Initial Release
 - 🔧 FIXED: Загрузка миров из вложенных папок
 - ⚡ NEW: ComponentCache для MiniMessage (~80% hit rate)
 - ⚡ NEW: Leaderboard caching (~70% hit rate)
@@ -542,7 +542,7 @@ PvPKitsPlugin (main)
 - 🐛 FIXED: Memory leaks prevention
 - 🐛 FIXED: Proper resource cleanup
 
-### v2.0.0 (2026) - Modern Edition
+
 - ✨ MiniMessage поддержка
 - ⚡ Kotlin Coroutines
 - 🚀 Java 21 support

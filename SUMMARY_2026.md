@@ -250,3 +250,4 @@ scoreboard-animation:
 **Made with ❤️ for PvPKits 2026 Edition**
 
 🚀 Готово к использованию!
+
