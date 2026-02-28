@@ -1,12 +1,11 @@
 use eframe::egui;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 mod server;
 mod ui;
 mod config;
 mod logs;
 
-use server::ServerManager;
 use ui::ManagerApp;
 
 fn main() -> Result<(), eframe::Error> {

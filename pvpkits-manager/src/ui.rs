@@ -39,7 +39,7 @@ enum Tab {
 }
 
 impl ManagerApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         let server = Arc::new(Mutex::new(ServerManager::new()));
         let config = Config::load().unwrap_or_default();
         
@@ -207,6 +207,8 @@ impl ManagerApp {
         
         ui.add_space(10.0);
         
+        let mut to_remove = None;
+        
         egui::ScrollArea::vertical().show(ui, |ui| {
             for (idx, arena) in self.arenas.iter().enumerate() {
                 ui.horizontal(|ui| {
@@ -214,12 +216,16 @@ impl ManagerApp {
                         self.selected_arena = Some(idx);
                     }
                     if ui.button("🗑️").clicked() {
-                        self.arenas.remove(idx);
-                        self.selected_arena = None;
+                        to_remove = Some(idx);
                     }
                 });
             }
         });
+        
+        if let Some(idx) = to_remove {
+            self.arenas.remove(idx);
+            self.selected_arena = None;
+        }
     }
 
     fn show_maps(&mut self, ui: &mut egui::Ui) {
@@ -315,7 +321,7 @@ impl ManagerApp {
     }
 
     fn build_plugin(&mut self) {
-        if let Ok(mut server) = self.server.lock() {
+        if let Ok(server) = self.server.lock() {
             server.build_plugin(&self.config.plugin_path);
         }
     }
@@ -323,7 +329,7 @@ impl ManagerApp {
     fn build_and_deploy(&mut self) {
         self.build_plugin();
         std::thread::sleep(std::time::Duration::from_secs(1));
-        if let Ok(mut server) = self.server.lock() {
+        if let Ok(server) = self.server.lock() {
             server.deploy_plugin(&self.config.plugin_path, &self.config.server_path);
         }
     }
