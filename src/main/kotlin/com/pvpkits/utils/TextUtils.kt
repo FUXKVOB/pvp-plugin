@@ -7,6 +7,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 object TextUtils {
     private val miniMessage = MiniMessage.miniMessage()
     private val legacySerializer = LegacyComponentSerializer.legacyAmpersand()
+    private val sectionSerializer = LegacyComponentSerializer.legacySection()
     
     /**
      * Format text with MiniMessage - main method used everywhere
@@ -41,6 +42,10 @@ object TextUtils {
             parseLegacy(text)
         }
     }
+
+    fun lines(vararg text: String): List<Component> = text.map(::parseAuto)
+
+    fun legacySection(text: String): String = sectionSerializer.serialize(parseAuto(text))
     
     /**
      * Format time in human-readable format

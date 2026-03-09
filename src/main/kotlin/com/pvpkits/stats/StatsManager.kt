@@ -24,7 +24,10 @@ import java.util.concurrent.TimeUnit
  * - Memory-efficient data structures
  * - Proper cleanup to prevent memory leaks
  */
-class StatsManager(private val plugin: PvPKitsPlugin) {
+class StatsManager(
+    private val plugin: PvPKitsPlugin,
+    private val dbManager: DatabaseManager
+) {
     
     // Primary stats storage (always in memory for fast access)
     private val stats = ConcurrentHashMap<UUID, PlayerStats>()
@@ -36,15 +39,10 @@ class StatsManager(private val plugin: PvPKitsPlugin) {
         .recordStats()
         .build()
     
-    private val dbManager = DatabaseManager(plugin)
     private var needsSave = false
     
     companion object {
         private const val AUTOSAVE_INTERVAL = 5 * 60 * 20L // 5 minutes in ticks
-    }
-    
-    init {
-        dbManager.initialize()
     }
     
     /**

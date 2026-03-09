@@ -2,7 +2,6 @@ package com.pvpkits
 
 import com.github.shynixn.mccoroutine.bukkit.SuspendingJavaPlugin
 import com.github.shynixn.mccoroutine.bukkit.launch
-import kotlinx.coroutines.delay
 import com.pvpkits.analytics.HeatmapCommand
 import com.pvpkits.analytics.HeatmapManager
 import com.pvpkits.arena.ArenaCommand
@@ -11,14 +10,16 @@ import com.pvpkits.arena.ImprovedArenaManager
 import com.pvpkits.arena.LobbyManager
 import com.pvpkits.combat.CombatMechanicsManager
 import com.pvpkits.commands.KitCommand
-import com.pvpkits.database.BatchStatsManager
-import com.pvpkits.matchmaking.MatchmakingManager
 import com.pvpkits.cosmetics.CosmeticsCommand
 import com.pvpkits.cosmetics.CosmeticsManager
+import com.pvpkits.database.BatchStatsManager
+import com.pvpkits.database.DatabaseManager
 import com.pvpkits.duel.DuelCommand
 import com.pvpkits.duel.DuelListener
 import com.pvpkits.duel.DuelManager
 import com.pvpkits.gui.KitGUI
+import com.pvpkits.gui.KitMenuHolder
+import com.pvpkits.matchmaking.MatchmakingManager
 import com.pvpkits.nametag.NametagManager
 import com.pvpkits.party.PartyCommand
 import com.pvpkits.party.PartyManager
@@ -35,209 +36,179 @@ import com.pvpkits.stats.StatsListener
 import com.pvpkits.stats.StatsManager
 import com.pvpkits.tournament.TournamentCommand
 import com.pvpkits.tournament.TournamentManager
-import com.pvpkits.utils.TextUtils
 import com.pvpkits.utils.CoroutineUtils
+import com.pvpkits.utils.ItemKeys
+import com.pvpkits.utils.TextUtils
 import com.pvpkits.world.WorldManager
-import net.kyori.adventure.text.Component
+import kotlinx.coroutines.delay
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.inventory.InventoryClickEvent
+import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerRespawnEvent
+import org.bukkit.persistence.PersistentDataType
 
 class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
-    
+
+    lateinit var databaseManager: DatabaseManager
+        private set
+
+    lateinit var itemKeys: ItemKeys
+        private set
+
     lateinit var kitManager: KitManager
         private set
-    
+
     lateinit var kitGUI: KitGUI
         private set
-    
+
     lateinit var nametagManager: NametagManager
         private set
-    
+
     lateinit var statsManager: StatsManager
         private set
-    
+
     lateinit var scoreboardManager: ScoreboardManager
         private set
-    
+
     lateinit var arenaManager: ArenaManager
         private set
-    
+
     lateinit var improvedArenaManager: ImprovedArenaManager
         private set
-    
+
     lateinit var lobbyManager: LobbyManager
         private set
-    
+
     lateinit var duelManager: DuelManager
         private set
-    
+
     lateinit var worldManager: WorldManager
         private set
-    
+
     lateinit var spectatorManager: SpectatorManager
         private set
-    
+
     lateinit var tournamentManager: TournamentManager
         private set
-    
+
     lateinit var ratingManager: RatingManager
         private set
-    
+
     lateinit var replayManager: ReplayManager
         private set
-    
+
     lateinit var cosmeticsManager: CosmeticsManager
         private set
-    
+
     lateinit var partyManager: PartyManager
         private set
-    
+
     lateinit var enhancedStatsManager: EnhancedStatsManager
         private set
-    
+
     lateinit var matchmakingManager: MatchmakingManager
         private set
-    
+
     lateinit var combatMechanicsManager: CombatMechanicsManager
         private set
-    
+
     lateinit var heatmapManager: HeatmapManager
         private set
-    
+
     lateinit var batchStatsManager: BatchStatsManager
         private set
-    
+
     lateinit var antiCheatManager: com.pvpkits.anticheat.ModernAntiCheatManager
         private set
-    
+
     lateinit var replayViewerGUI: com.pvpkits.replay.ReplayViewerGUI
         private set
 
     override suspend fun onEnableAsync() {
-        // Initialize coroutine scope for structured concurrency
         CoroutineUtils.initPluginScope(this)
-        
+        itemKeys = ItemKeys(this)
+
         saveDefaultConfig()
-        
-        // Initialize world manager FIRST (loads lobby and arena worlds)
+
+        databaseManager = DatabaseManager(this)
+        databaseManager.initialize()
+
         worldManager = WorldManager(this)
         worldManager.loadWorlds()
-        
-        // Load kits asynchronously using optimized IO dispatcher
+
         kitManager = KitManager(this)
-        launch {
-            CoroutineUtils.io { kitManager.loadKits() }
-        }
-        
+        CoroutineUtils.io { kitManager.loadKits() }
+
         kitGUI = KitGUI(this)
-        
+
         nametagManager = NametagManager(this)
         nametagManager.enable()
-        
-        // Initialize stats system
-        statsManager = StatsManager(this)
-        launch {
-            statsManager.loadStats()
-        }
+
+        statsManager = StatsManager(this, databaseManager)
+        statsManager.loadStats()
         statsManager.startAutosave()
-        
-        // Register stats listener
         server.pluginManager.registerEvents(StatsListener(this), this)
-        
-        // Initialize scoreboard system
+
         scoreboardManager = ScoreboardManager(this)
         scoreboardManager.startAutoUpdate()
-        
-        // Initialize arena system (old)
+
         arenaManager = ArenaManager(this)
         arenaManager.loadArenas()
-        
-        // Initialize improved arena system (new)
+
         improvedArenaManager = ImprovedArenaManager(this)
         improvedArenaManager.loadTemplates()
-        
-        // Initialize lobby system
+
         lobbyManager = LobbyManager(this)
-        
-        // Initialize duel system
+
         duelManager = DuelManager(this)
         duelManager.initializeSpawns()
-        
-        // Register duel listener
         server.pluginManager.registerEvents(DuelListener(this), this)
-        
-        // Initialize spectator system
+
         spectatorManager = SpectatorManager(this)
         server.pluginManager.registerEvents(SpectatorListener(this), this)
-        
-        // Initialize tournament system
+
         tournamentManager = TournamentManager(this)
-        
-        // Initialize rating system
-        ratingManager = RatingManager(this)
-        launch {
-            ratingManager.initialize()
-        }
-        
-        // Initialize replay system
+
+        ratingManager = RatingManager(this, databaseManager)
+        ratingManager.initialize()
+
         replayManager = ReplayManager(this)
-        
-        // Initialize cosmetics system
         cosmeticsManager = CosmeticsManager(this)
-        
-        // Initialize party system
         partyManager = PartyManager(this)
-        
-        // Initialize enhanced stats
-        enhancedStatsManager = EnhancedStatsManager(this)
-        launch {
-            enhancedStatsManager.initialize(statsManager.getConnection())
-        }
-        
-        // Initialize batch stats manager
+
+        enhancedStatsManager = EnhancedStatsManager(this, databaseManager)
+        enhancedStatsManager.initialize()
+
         batchStatsManager = BatchStatsManager(this)
-        
-        // Initialize anti-cheat system (2026)
         antiCheatManager = com.pvpkits.anticheat.ModernAntiCheatManager(this)
-        
-        // Initialize replay viewer GUI
         replayViewerGUI = com.pvpkits.replay.ReplayViewerGUI(this)
-        
-        // Initialize bStats metrics (2026)
+
         try {
             com.pvpkits.metrics.BStatsMetrics(this).initialize()
         } catch (e: Exception) {
             logger.warning("Failed to initialize bStats: ${e.message}")
         }
-        
-        // Initialize matchmaking system
+
         matchmakingManager = MatchmakingManager(this)
-        
-        // Initialize combat mechanics (1.21+)
         combatMechanicsManager = CombatMechanicsManager(this)
-        
-        // Initialize heatmap analytics
         heatmapManager = HeatmapManager(this)
-        
+
         val kitCommand = KitCommand(this)
         getCommand("kit")?.setExecutor(kitCommand)
         getCommand("kit")?.tabCompleter = kitCommand
         getCommand("createkit")?.setExecutor(kitCommand)
         getCommand("deletekit")?.setExecutor(kitCommand)
-        
-        // Register stats commands
+
         val statsCommand = StatsCommand(this)
         getCommand("stats")?.setExecutor(statsCommand)
         getCommand("stats")?.tabCompleter = statsCommand
         getCommand("top")?.setExecutor(statsCommand)
         getCommand("top")?.tabCompleter = statsCommand
-        
-        // Register arena commands
+
         val arenaCommand = ArenaCommand(this)
         getCommand("arena")?.setExecutor(arenaCommand)
         getCommand("arena")?.tabCompleter = arenaCommand
@@ -246,15 +217,11 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         getCommand("leave")?.setExecutor(arenaCommand)
         getCommand("queue")?.setExecutor(arenaCommand)
         getCommand("arenas")?.setExecutor(arenaCommand)
-        
-        // Register duel commands
+
         val duelCommand = DuelCommand(this)
-        getCommand("duel")?.setExecutor(duelCommand)
-        getCommand("duel")?.tabCompleter = duelCommand
         getCommand("duelqueue")?.setExecutor(duelCommand)
         getCommand("duelqueue")?.tabCompleter = duelCommand
-        
-        // Register spectator commands
+
         val spectatorCommand = SpectatorCommand(this)
         getCommand("spectate")?.setExecutor(spectatorCommand)
         getCommand("spectate")?.tabCompleter = spectatorCommand
@@ -262,13 +229,11 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         getCommand("spec")?.tabCompleter = spectatorCommand
         getCommand("stopspectating")?.setExecutor(spectatorCommand)
         getCommand("stopspec")?.setExecutor(spectatorCommand)
-        
-        // Register tournament commands
+
         val tournamentCommand = TournamentCommand(this)
         getCommand("tournament")?.setExecutor(tournamentCommand)
         getCommand("tournament")?.tabCompleter = tournamentCommand
-        
-        // Register rating commands
+
         val ratingCommand = RatingCommand(this)
         getCommand("rating")?.setExecutor(ratingCommand)
         getCommand("rating")?.tabCompleter = ratingCommand
@@ -276,8 +241,7 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         getCommand("elo")?.tabCompleter = ratingCommand
         getCommand("leaderboard")?.setExecutor(ratingCommand)
         getCommand("leaderboard")?.tabCompleter = ratingCommand
-        
-        // Register party/challenge commands
+
         val partyCommand = PartyCommand(this)
         getCommand("party")?.setExecutor(partyCommand)
         getCommand("party")?.tabCompleter = partyCommand
@@ -285,41 +249,34 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         getCommand("duel")?.tabCompleter = partyCommand
         getCommand("challenge")?.setExecutor(partyCommand)
         getCommand("challenge")?.tabCompleter = partyCommand
-        
-        // Register cosmetics commands
+
         val cosmeticsCommand = CosmeticsCommand(this)
         getCommand("cosmetics")?.setExecutor(cosmeticsCommand)
         getCommand("cosmetics")?.tabCompleter = cosmeticsCommand
-        
-        // Register heatmap commands
+
         val heatmapCommand = HeatmapCommand(this)
         getCommand("heatmap")?.setExecutor(heatmapCommand)
         getCommand("heatmap")?.tabCompleter = heatmapCommand
-        
-        // Register replay commands
+
         val replayCommand = com.pvpkits.replay.ReplayCommand(this)
         getCommand("replay")?.setExecutor(replayCommand)
         getCommand("replay")?.tabCompleter = replayCommand
-        
+
         server.pluginManager.registerEvents(this, this)
-        
-        // Start cosmetics trail updater (every tick)
+
         server.scheduler.runTaskTimer(this, Runnable {
             cosmeticsManager.updateTrails()
         }, 0L, 1L)
-        
-        // Start party challenge cleanup (every 30 seconds)
+
         server.scheduler.runTaskTimer(this, Runnable {
             partyManager.cleanupExpired()
         }, 600L, 600L)
-        
-        // Setup nametags and scoreboards for online players
+
         server.onlinePlayers.forEach { player ->
             nametagManager.setupPlayer(player)
             scoreboardManager.setupScoreboard(player)
         }
-        
-        // Log startup info with memory stats
+
         val memStats = kitManager.getMemoryStats()
         val statsInfo = statsManager.getMemoryStats()
         val arenaStats = arenaManager.getMemoryStats()
@@ -330,74 +287,29 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
         val batchStats = batchStatsManager.getQueueStats()
         val antiCheatStats = antiCheatManager.getStats()
         val componentCacheStats = com.pvpkits.utils.ComponentCache.getCacheStats()
-        
-        logger.info("╔════════════════════════════════════╗")
-        logger.info("║   PvPKits v${description.version} - 2026 Edition  ║")
-        logger.info("╠════════════════════════════════════╣")
-        logger.info("║   📦 Core Systems                  ║")
-        logger.info("║   Loaded ${memStats["kits_loaded"]} kits                  ║")
-        logger.info("║   Players tracked: ${statsInfo["total_players"]}            ║")
-        logger.info("║   Arenas: ${arenaStats["arenas_loaded"]}                       ║")
-        logger.info("║   Arena Templates: ${improvedArenaStats["templates"]}              ║")
-        logger.info("║   Worlds: ${worldManager.getArenaCount()} arenas loaded       ║")
-        logger.info("╠════════════════════════════════════╣")
-        logger.info("║   🎮 Game Systems                  ║")
-        logger.info("║   Duels: ${duelManager.getActiveMatchCount()} active               ║")
-        logger.info("║   MMR Queue: ${matchmakingStats["total_in_queue"]} players          ║")
-        logger.info("║   Combat Tracking: ${combatStats["active_combos"]} combos      ║")
-        logger.info("║   Heatmap: ${heatmapStats["tracked_arenas"]} arenas tracked    ║")
-        logger.info("╠════════════════════════════════════╣")
-        logger.info("║   🔧 Performance (2026)            ║")
-        logger.info("║   Batch Queue: ${batchStats["total_pending"]} pending         ║")
-        logger.info("║   Component Cache: ${componentCacheStats["size"]} cached      ║")
-        logger.info("║   Cache Hit Rate: ${String.format("%.1f", (componentCacheStats["hit_rate"] as Double) * 100)}%      ║")
-        logger.info("║   DB Pool: ${statsInfo["db_pool_active"]}/${statsInfo["db_pool_idle"]} active/idle      ║")
-        logger.info("║   Leaderboard Cache: ${String.format("%.1f", (statsInfo["leaderboard_cache_hit_rate"] as Double) * 100)}%  ║")
-        logger.info("╠════════════════════════════════════╣")
-        logger.info("║   🛡️ Security (2026)                ║")
-        logger.info("║   Anti-Cheat: ON                   ║")
-        logger.info("║   Tracked Players: ${antiCheatStats["tracked_players"]}            ║")
-        logger.info("║   Click Violations: ${antiCheatStats["total_click_violations"]}            ║")
-        logger.info("║   Reach Violations: ${antiCheatStats["total_reach_violations"]}            ║")
-        logger.info("╠════════════════════════════════════╣")
-        logger.info("║   ✨ Features                      ║")
-        logger.info("║   Spectator: ON                    ║")
-        logger.info("║   Tournaments: ON                  ║")
-        logger.info("║   ELO Rating: ON                   ║")
-        logger.info("║   Replays: ON                      ║")
-        logger.info("║   Cosmetics: ON                    ║")
-        logger.info("║   Party System: ON                 ║")
-        logger.info("║   Nametags: ${if (config.getBoolean("nametag.enabled")) "ON" else "OFF"}               ║")
-        logger.info("║   Stats: ${if (config.getBoolean("stats.enabled")) "ON" else "OFF"}                  ║")
-        logger.info("╠════════════════════════════════════╣")
-        logger.info("║   💻 Tech Stack                    ║")
-        logger.info("║   Java: ${System.getProperty("java.version")}             ║")
-        logger.info("║   Kotlin 2.3.0 + Coroutines        ║")
-        logger.info("║   HikariCP + Caffeine + WAL        ║")
-        logger.info("║   Server: ${com.pvpkits.utils.FoliaSchedulerUtils.getServerInfo()}          ║")
-        logger.info("║   bStats: ON                       ║")
-        logger.info("╚════════════════════════════════════╝")
+
+        logger.info("Loaded ${memStats["kits_loaded"]} kits")
+        logger.info("Players tracked: ${statsInfo["total_players"]}")
+        logger.info("Arenas: ${arenaStats["arenas_loaded"]}")
+        logger.info("Arena Templates: ${improvedArenaStats["templates"]}")
+        logger.info("MMR Queue: ${matchmakingStats["total_in_queue"]}")
+        logger.info("Combat Tracking: ${combatStats["active_combos"]}")
+        logger.info("Heatmap: ${heatmapStats["tracked_arenas"]}")
+        logger.info("Batch Queue: ${batchStats["total_pending"]}")
+        logger.info("Component Cache: ${componentCacheStats["size"]}")
+        logger.info("Anti-Cheat Players: ${antiCheatStats["tracked_players"]}")
     }
 
     override suspend fun onDisableAsync() {
-        // Flush batch stats before shutdown
         batchStatsManager.shutdown()
-        
-        // Save stats before shutdown
         statsManager.saveStats()
-        
-        // Shutdown database
         statsManager.shutdown()
         ratingManager.shutdown()
-        
-        // Save arenas
+        databaseManager.shutdown()
         arenaManager.saveArenas()
         improvedArenaManager.saveTemplates()
-        
-        // Clean up all coroutines to prevent memory leaks
         CoroutineUtils.cancelPluginScope()
-        
-        // Clean up all player data
+
         server.onlinePlayers.forEach { player ->
             kitManager.cleanupPlayer(player.uniqueId)
             kitGUI.cleanup(player)
@@ -414,68 +326,51 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
             combatMechanicsManager.cleanupPlayer(player.uniqueId)
             antiCheatManager.cleanupPlayer(player.uniqueId)
         }
-        
-        // Clear all caches
+
         kitGUI.clearAllCache()
         com.pvpkits.utils.ComponentCache.clearCache()
-        
         logger.info("PvPKits plugin disabled - all resources cleaned up!")
     }
 
     @EventHandler
     fun onInventoryClick(event: InventoryClickEvent) {
         val player = event.whoClicked as? org.bukkit.entity.Player ?: return
-        
-        // Check if it's our GUI by checking the inventory holder
-        val inventory = event.inventory
-        if (inventory.holder != null) return // Not our GUI
-        
-        // Additional check: verify it's the kit GUI by checking title
-        val viewTitle = event.view.title
-        val configTitle = config.getString("gui.title") ?: "⚔ PvP Kits"
-        
-        // Simple string contains check instead of Component comparison
-        if (!viewTitle.contains("PvP Kits") && !viewTitle.contains("Kits")) return
-        
+        val inventory = event.view.topInventory
+        if (inventory.holder !is KitMenuHolder) return
+        if (event.clickedInventory != inventory) return
+
         event.isCancelled = true
-        
         val clickedItem = event.currentItem ?: return
-        
         kitGUI.handleClick(player, event.slot, clickedItem)
     }
-    
+
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
         val player = event.player
-        
         nametagManager.onPlayerJoin(player)
         scoreboardManager.setupScoreboard(player)
-        
-        // Teleport to lobby on join
+
         if (config.getBoolean("lobby.teleport-on-join", true)) {
             worldManager.teleportToLobby(player)
         }
-        
-        // Give compass for kit selection if not in arena or duel
+
         if (!arenaManager.isInArena(player) && !duelManager.isInMatch(player.uniqueId)) {
             giveKitCompass(player)
         }
     }
-    
+
     @EventHandler
     fun onPlayerRespawn(event: PlayerRespawnEvent) {
-        // Respawn in arena if player was in one
         if (arenaManager.isInArena(event.player)) {
             launch {
-                delay(100) // Small delay using coroutines
+                delay(100)
                 arenaManager.respawnInArena(event.player)
             }
         }
     }
-    
+
     @EventHandler
     fun onPlayerDeath(event: PlayerDeathEvent) {
-        // Auto-respawn in arena
         if (arenaManager.isInArena(event.entity)) {
             launch {
                 delay(50)
@@ -483,36 +378,33 @@ class PvPKitsPlugin : SuspendingJavaPlugin(), Listener {
             }
         }
     }
-    
+
     private fun giveKitCompass(player: org.bukkit.entity.Player) {
         val compass = org.bukkit.inventory.ItemStack(org.bukkit.Material.COMPASS)
         val meta = compass.itemMeta
-        meta?.setDisplayName("§6§l⚔ Kit Selection")
-        meta?.lore = listOf("§7Right-click to select a kit!")
+        meta?.displayName(TextUtils.parseAuto("<gold><bold>Kit Selection"))
+        meta?.lore(TextUtils.lines("<gray>Right-click to select a kit!"))
+        meta?.persistentDataContainer?.set(itemKeys.kitCompass, PersistentDataType.BYTE, 1)
         compass.itemMeta = meta
         player.inventory.setItem(4, compass)
     }
-    
+
     @EventHandler
-    fun onPlayerInteract(event: org.bukkit.event.player.PlayerInteractEvent) {
-        val player = event.player
+    fun onPlayerInteract(event: PlayerInteractEvent) {
         val item = event.item ?: return
-        
-        // Check if it's our kit selection compass
-        if (item.type == org.bukkit.Material.COMPASS) {
-            val displayName = item.itemMeta?.displayName ?: return
-            // Check for both English and legacy names
-            if (displayName.contains("Kit Selection") || displayName.contains("⚔")) {
-                event.isCancelled = true
-                kitGUI.openKitMenu(player)
-            }
-        }
+        if (item.type != org.bukkit.Material.COMPASS) return
+
+        val isKitCompass = item.itemMeta?.persistentDataContainer
+            ?.has(itemKeys.kitCompass, PersistentDataType.BYTE) == true
+        if (!isKitCompass) return
+
+        event.isCancelled = true
+        kitGUI.openKitMenu(event.player)
     }
-    
+
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
         val player = event.player
-        // Clean up player data to prevent memory leaks
         kitManager.cleanupPlayer(player.uniqueId)
         kitGUI.cleanup(player)
         nametagManager.onPlayerQuit(player)

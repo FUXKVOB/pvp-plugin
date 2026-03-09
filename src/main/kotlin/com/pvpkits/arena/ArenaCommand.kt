@@ -1,21 +1,16 @@
 package com.pvpkits.arena
 
 import com.pvpkits.PvPKitsPlugin
-import org.bukkit.Bukkit
-import org.bukkit.ChatColor
-import org.bukkit.Location
-import org.bukkit.Material
+import com.pvpkits.utils.TextUtils
+import net.kyori.adventure.text.Component
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabCompleter
 import org.bukkit.entity.Player
 
-/**
- * Arena command handler
- */
 class ArenaCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabCompleter {
-    
+
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         when (command.name.lowercase()) {
             "arena" -> handleArenaAdmin(sender, args)
@@ -26,18 +21,18 @@ class ArenaCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
         }
         return true
     }
-    
+
     private fun handleArenaAdmin(sender: CommandSender, args: Array<out String>) {
         if (!sender.hasPermission("pvpkits.admin")) {
-            sender.sendMessage("${ChatColor.RED}No permission!")
+            send(sender, "<red>No permission!")
             return
         }
-        
+
         if (args.isEmpty()) {
             sendArenaHelp(sender)
             return
         }
-        
+
         when (args[0].lowercase()) {
             "create" -> createArena(sender, args)
             "delete" -> deleteArena(sender, args)
@@ -50,302 +45,279 @@ class ArenaCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
             else -> sendArenaHelp(sender)
         }
     }
-    
+
     private fun sendArenaHelp(sender: CommandSender) {
-        sender.sendMessage("")
-        sender.sendMessage("${ChatColor.GOLD}════════ Arena Commands ════════")
-        sender.sendMessage("${ChatColor.YELLOW}/arena create <name> ${ChatColor.GRAY}- Create new arena")
-        sender.sendMessage("${ChatColor.YELLOW}/arena delete <name> ${ChatColor.GRAY}- Delete arena")
-        sender.sendMessage("${ChatColor.YELLOW}/arena list ${ChatColor.GRAY}- List all arenas")
-        sender.sendMessage("${ChatColor.YELLOW}/arena info <name> ${ChatColor.GRAY}- Arena info")
-        sender.sendMessage("${ChatColor.YELLOW}/arena setspawn <name> ${ChatColor.GRAY}- Add spawn point")
-        sender.sendMessage("${ChatColor.YELLOW}/arena setlobby <name> ${ChatColor.GRAY}- Set lobby spawn")
-        sender.sendMessage("${ChatColor.YELLOW}/arena enable/disable <name> ${ChatColor.GRAY}- Toggle arena")
-        sender.sendMessage("${ChatColor.GOLD}═══════════════════════════════")
-        sender.sendMessage("${ChatColor.AQUA}New Template System:")
-        sender.sendMessage("${ChatColor.YELLOW}/arena template create <name> ${ChatColor.GRAY}- Create template")
-        sender.sendMessage("${ChatColor.YELLOW}/arena template list ${ChatColor.GRAY}- List templates")
-        sender.sendMessage("${ChatColor.YELLOW}/arena template info <name> ${ChatColor.GRAY}- Template info")
-        sender.sendMessage("${ChatColor.GOLD}═══════════════════════════════")
-        sender.sendMessage("")
+        sendBlock(sender, listOf(
+            "<gradient:#f6c453:#f08b3e><bold>Arena Commands</bold></gradient>",
+            "<yellow>/arena create <name></yellow> <gray>- Create new arena",
+            "<yellow>/arena delete <name></yellow> <gray>- Delete arena",
+            "<yellow>/arena list</yellow> <gray>- List all arenas",
+            "<yellow>/arena info <name></yellow> <gray>- Arena info",
+            "<yellow>/arena setspawn <name></yellow> <gray>- Add spawn point",
+            "<yellow>/arena setlobby <name></yellow> <gray>- Set lobby spawn",
+            "<yellow>/arena enable/disable <name></yellow> <gray>- Toggle arena",
+            "<aqua>Template system:</aqua>",
+            "<yellow>/arena template create <name></yellow> <gray>- Create template",
+            "<yellow>/arena template list</yellow> <gray>- List templates",
+            "<yellow>/arena template info <name></yellow> <gray>- Template info"
+        ))
     }
-    
+
     private fun createArena(sender: CommandSender, args: Array<out String>) {
         if (args.size < 2) {
-            sender.sendMessage("${ChatColor.RED}Usage: /arena create <name>")
+            send(sender, "<red>Usage: /arena create <name>")
             return
         }
-        
+
         val player = sender as? Player
         if (player == null) {
-            sender.sendMessage("${ChatColor.RED}This command can only be used by players!")
+            send(sender, "<red>This command can only be used by players!")
             return
         }
-        
+
         val name = args[1]
-        
         if (plugin.arenaManager.getArena(name) != null) {
-            sender.sendMessage("${ChatColor.RED}Arena '$name' already exists!")
+            send(sender, "<red>Arena '$name' already exists!")
             return
         }
-        
-        // Create arena with current location as first spawn
+
         val loc = player.location
-        val arena = plugin.arenaManager.createArena(
-            name = name,
-            displayName = name,
-            worldName = loc.world!!.name,
-            spawns = listOf(loc)
-        )
-        
+        val arena = plugin.arenaManager.createArena(name, name, loc.world!!.name, listOf(loc))
         if (arena != null) {
-            sender.sendMessage("${ChatColor.GREEN}Arena '$name' created!")
-            sender.sendMessage("${ChatColor.GRAY}Add more spawns with ${ChatColor.YELLOW}/arena setspawn $name")
+            send(sender, "<green>Arena '$name' created!")
+            send(sender, "<gray>Add more spawns with <yellow>/arena setspawn $name")
         } else {
-            sender.sendMessage("${ChatColor.RED}Failed to create arena!")
+            send(sender, "<red>Failed to create arena!")
         }
     }
-    
+
     private fun deleteArena(sender: CommandSender, args: Array<out String>) {
         if (args.size < 2) {
-            sender.sendMessage("${ChatColor.RED}Usage: /arena delete <name>")
+            send(sender, "<red>Usage: /arena delete <name>")
             return
         }
-        
+
         val name = args[1]
-        
         if (plugin.arenaManager.deleteArena(name)) {
-            sender.sendMessage("${ChatColor.GREEN}Arena '$name' deleted!")
+            send(sender, "<green>Arena '$name' deleted!")
         } else {
-            sender.sendMessage("${ChatColor.RED}Arena '$name' not found!")
+            send(sender, "<red>Arena '$name' not found!")
         }
     }
-    
+
     private fun listArenas(sender: CommandSender) {
         val arenas = plugin.arenaManager.getAllArenas()
-        
         if (arenas.isEmpty()) {
-            sender.sendMessage("${ChatColor.YELLOW}No arenas created yet!")
+            send(sender, "<yellow>No arenas created yet!")
             return
         }
-        
-        sender.sendMessage("")
-        sender.sendMessage("${ChatColor.GOLD}════════ Arenas ════════")
+
+        val lines = mutableListOf("<gradient:#f6c453:#f08b3e><bold>Arenas</bold></gradient>")
         arenas.forEach { arena ->
-            val status = if (arena.enabled) "${ChatColor.GREEN}✓" else "${ChatColor.RED}✗"
+            val status = if (arena.enabled) "<green>online</green>" else "<red>offline</red>"
             val players = plugin.arenaManager.getPlayerCount(arena.name)
-            sender.sendMessage("$status ${ChatColor.YELLOW}${arena.displayName} ${ChatColor.GRAY}($players/${arena.maxPlayers})")
+            lines.add("$status <yellow>${arena.displayName}</yellow> <gray>($players/${arena.maxPlayers})")
         }
-        sender.sendMessage("${ChatColor.GOLD}════════════════════════")
-        sender.sendMessage("")
+        sendBlock(sender, lines)
     }
-    
+
     private fun arenaInfo(sender: CommandSender, args: Array<out String>) {
         if (args.size < 2) {
-            sender.sendMessage("${ChatColor.RED}Usage: /arena info <name>")
+            send(sender, "<red>Usage: /arena info <name>")
             return
         }
-        
+
         val arena = plugin.arenaManager.getArena(args[1])
         if (arena == null) {
-            sender.sendMessage("${ChatColor.RED}Arena not found!")
+            send(sender, "<red>Arena not found!")
             return
         }
-        
+
         val players = plugin.arenaManager.getPlayerCount(arena.name)
-        
-        sender.sendMessage("")
-        sender.sendMessage("${ChatColor.GOLD}════════ ${arena.displayName} ════════")
-        sender.sendMessage("${ChatColor.YELLOW}Status: ${if (arena.enabled) "${ChatColor.GREEN}Enabled" else "${ChatColor.RED}Disabled"}")
-        sender.sendMessage("${ChatColor.YELLOW}World: ${ChatColor.WHITE}${arena.worldName}")
-        sender.sendMessage("${ChatColor.YELLOW}Spawns: ${ChatColor.WHITE}${arena.spawns.size}")
-        sender.sendMessage("${ChatColor.YELLOW}Players: ${ChatColor.WHITE}$players/${arena.maxPlayers}")
-        sender.sendMessage("${ChatColor.YELLOW}Min Players: ${ChatColor.WHITE}${arena.minPlayers}")
-        sender.sendMessage("${ChatColor.GOLD}═══════════════════════════════")
-        sender.sendMessage("")
+        sendBlock(sender, listOf(
+            "<gradient:#f6c453:#f08b3e><bold>${arena.displayName}</bold></gradient>",
+            "<gray>Status: ${if (arena.enabled) "<green>Enabled" else "<red>Disabled"}",
+            "<gray>World: <white>${arena.worldName}",
+            "<gray>Spawns: <white>${arena.spawns.size}",
+            "<gray>Players: <white>$players/${arena.maxPlayers}",
+            "<gray>Min Players: <white>${arena.minPlayers}"
+        ))
     }
-    
+
     private fun setSpawn(sender: CommandSender, args: Array<out String>) {
-        // Implementation for adding spawn points
-        sender.sendMessage("${ChatColor.YELLOW}Spawn point configuration - use /arena create for new spawns")
+        send(sender, "<yellow>Spawn point configuration is still handled through the current arena workflow.")
     }
-    
+
     private fun setLobby(sender: CommandSender, args: Array<out String>) {
-        // Implementation for setting lobby spawn
-        sender.sendMessage("${ChatColor.YELLOW}Lobby configuration - set in config.yml")
+        send(sender, "<yellow>Lobby configuration is still controlled from <white>config.yml</white>.")
     }
-    
+
     private fun toggleArena(sender: CommandSender, args: Array<out String>) {
         if (args.size < 2) {
-            sender.sendMessage("${ChatColor.RED}Usage: /arena ${args[0]} <name>")
+            send(sender, "<red>Usage: /arena ${args[0]} <name>")
             return
         }
-        
-        sender.sendMessage("${ChatColor.YELLOW}Arena toggle - modify arenas.yml directly or recreate arena")
+
+        send(sender, "<yellow>Arena enable/disable is not wired yet. Update the arena config or recreate the arena for now.")
     }
-    
+
     private fun handleJoin(sender: CommandSender, args: Array<out String>) {
         val player = sender as? Player
         if (player == null) {
-            sender.sendMessage("${ChatColor.RED}This command can only be used by players!")
+            send(sender, "<red>This command can only be used by players!")
             return
         }
-        
-        val arenaName = if (args.isNotEmpty()) args[0] else {
-            // Find arena with most players or first available
+
+        val arenaName = if (args.isNotEmpty()) {
+            args[0]
+        } else {
             plugin.arenaManager.getEnabledArenas().firstOrNull()?.name ?: run {
-                sender.sendMessage("${ChatColor.RED}No arenas available!")
+                send(sender, "<red>No arenas available!")
                 return
             }
         }
-        
+
         if (plugin.arenaManager.joinArena(player, arenaName)) {
             val arena = plugin.arenaManager.getArena(arenaName)
-            player.sendMessage("${ChatColor.GREEN}Joined ${ChatColor.YELLOW}${arena?.displayName ?: arenaName}!")
+            send(player, "<green>Joined <yellow>${arena?.displayName ?: arenaName}</yellow>!")
         } else {
-            player.sendMessage("${ChatColor.RED}Failed to join arena! It may be full or disabled.")
+            send(player, "<red>Failed to join arena. It may be full or disabled.")
         }
     }
-    
+
     private fun handleLeave(sender: CommandSender) {
         val player = sender as? Player
         if (player == null) {
-            sender.sendMessage("${ChatColor.RED}This command can only be used by players!")
+            send(sender, "<red>This command can only be used by players!")
             return
         }
-        
+
         if (plugin.arenaManager.leaveArena(player)) {
-            player.sendMessage("${ChatColor.YELLOW}Left the arena!")
+            send(player, "<yellow>Left the arena!")
         } else {
-            player.sendMessage("${ChatColor.RED}You are not in an arena!")
+            send(player, "<red>You are not in an arena!")
         }
     }
-    
+
     private fun handleQueue(sender: CommandSender) {
         val player = sender as? Player
         if (player == null) {
-            sender.sendMessage("${ChatColor.RED}This command can only be used by players!")
+            send(sender, "<red>This command can only be used by players!")
             return
         }
-        
+
         if (plugin.lobbyManager.isInQueue(player)) {
             plugin.lobbyManager.removeFromQueue(player)
         } else {
             plugin.lobbyManager.addToQueue(player)
         }
     }
-    
+
     private fun handleArenasList(sender: CommandSender) {
         listArenas(sender)
     }
-    
+
     private fun handleTemplate(sender: CommandSender, args: Array<out String>) {
         if (args.size < 2) {
-            sender.sendMessage("${ChatColor.RED}Usage: /arena template <create|list|info|delete>")
+            send(sender, "<red>Usage: /arena template <create|list|info|delete>")
             return
         }
-        
+
         when (args[1].lowercase()) {
             "create" -> createTemplate(sender, args)
             "list" -> listTemplates(sender)
             "info" -> templateInfo(sender, args)
             "delete" -> deleteTemplate(sender, args)
-            else -> sender.sendMessage("${ChatColor.RED}Unknown template command!")
+            else -> send(sender, "<red>Unknown template command!")
         }
     }
-    
+
     private fun createTemplate(sender: CommandSender, args: Array<out String>) {
         val player = sender as? Player
         if (player == null) {
-            sender.sendMessage("${ChatColor.RED}This command can only be used by players!")
+            send(sender, "<red>This command can only be used by players!")
             return
         }
-        
+
         if (args.size < 3) {
-            sender.sendMessage("${ChatColor.RED}Usage: /arena template create <name>")
-            sender.sendMessage("${ChatColor.GRAY}Stand at spawn1, then use this command")
-            sender.sendMessage("${ChatColor.GRAY}You'll be prompted to set spawn2 and bounds")
+            sendBlock(sender, listOf(
+                "<red>Usage: /arena template create <name>",
+                "<gray>Stand at spawn1, then use this command.",
+                "<gray>You'll still need to define spawn2 and the arena bounds."
+            ))
             return
         }
-        
+
         val name = args[2]
-        
         if (plugin.improvedArenaManager.getTemplate(name) != null) {
-            sender.sendMessage("${ChatColor.RED}Template '$name' already exists!")
+            send(sender, "<red>Template '$name' already exists!")
             return
         }
-        
-        // Store player's location as spawn1
-        val spawn1 = player.location.clone()
-        
-        sender.sendMessage("${ChatColor.GREEN}Spawn 1 set at your location!")
-        sender.sendMessage("${ChatColor.YELLOW}Move to spawn 2 location and type: ${ChatColor.WHITE}/arena template setspawn2 $name")
+
+        send(sender, "<green>Spawn 1 captured for <yellow>$name</yellow>.")
+        send(sender, "<yellow>Move to spawn 2 and continue with the template setup flow.")
     }
-    
+
     private fun listTemplates(sender: CommandSender) {
         val templates = plugin.improvedArenaManager.getAllTemplates()
-        
         if (templates.isEmpty()) {
-            sender.sendMessage("${ChatColor.YELLOW}No arena templates created yet!")
-            sender.sendMessage("${ChatColor.GRAY}Create one with: ${ChatColor.WHITE}/arena template create <name>")
+            sendBlock(sender, listOf(
+                "<yellow>No arena templates created yet!",
+                "<gray>Create one with <white>/arena template create <name>"
+            ))
             return
         }
-        
-        sender.sendMessage("")
-        sender.sendMessage("${ChatColor.GOLD}════════ Arena Templates ════════")
+
+        val lines = mutableListOf("<gradient:#f6c453:#f08b3e><bold>Arena Templates</bold></gradient>")
         templates.forEach { template ->
-            val status = if (template.enabled) "${ChatColor.GREEN}✓" else "${ChatColor.RED}✗"
-            val stats = plugin.improvedArenaManager.getMemoryStats()
-            sender.sendMessage("$status ${ChatColor.YELLOW}${template.displayName} ${ChatColor.GRAY}(${template.worldName})")
+            val status = if (template.enabled) "<green>online</green>" else "<red>offline</red>"
+            lines.add("$status <yellow>${template.displayName}</yellow> <gray>(${template.worldName})")
         }
-        sender.sendMessage("${ChatColor.GRAY}Active instances: ${ChatColor.WHITE}${plugin.improvedArenaManager.getMemoryStats()["active_instances"]}")
-        sender.sendMessage("${ChatColor.GOLD}═════════════════════════════════")
-        sender.sendMessage("")
+        lines.add("<gray>Active instances: <white>${plugin.improvedArenaManager.getMemoryStats()["active_instances"]}")
+        sendBlock(sender, lines)
     }
-    
+
     private fun templateInfo(sender: CommandSender, args: Array<out String>) {
         if (args.size < 3) {
-            sender.sendMessage("${ChatColor.RED}Usage: /arena template info <name>")
+            send(sender, "<red>Usage: /arena template info <name>")
             return
         }
-        
+
         val template = plugin.improvedArenaManager.getTemplate(args[2])
         if (template == null) {
-            sender.sendMessage("${ChatColor.RED}Template not found!")
+            send(sender, "<red>Template not found!")
             return
         }
-        
+
         val (dx, dy, dz) = template.getBoundsSize()
-        
-        sender.sendMessage("")
-        sender.sendMessage("${ChatColor.GOLD}════════ ${template.displayName} ════════")
-        sender.sendMessage("${ChatColor.YELLOW}Status: ${if (template.enabled) "${ChatColor.GREEN}Enabled" else "${ChatColor.RED}Disabled"}")
-        sender.sendMessage("${ChatColor.YELLOW}World: ${ChatColor.WHITE}${template.worldName}")
-        sender.sendMessage("${ChatColor.YELLOW}Bounds: ${ChatColor.WHITE}${dx}x${dy}x${dz}")
-        sender.sendMessage("${ChatColor.YELLOW}Spawn 1: ${ChatColor.WHITE}${template.spawn1.blockX}, ${template.spawn1.blockY}, ${template.spawn1.blockZ}")
-        sender.sendMessage("${ChatColor.YELLOW}Spawn 2: ${ChatColor.WHITE}${template.spawn2.blockX}, ${template.spawn2.blockY}, ${template.spawn2.blockZ}")
+        val lines = mutableListOf(
+            "<gradient:#f6c453:#f08b3e><bold>${template.displayName}</bold></gradient>",
+            "<gray>Status: ${if (template.enabled) "<green>Enabled" else "<red>Disabled"}",
+            "<gray>World: <white>${template.worldName}",
+            "<gray>Bounds: <white>${dx}x${dy}x${dz}",
+            "<gray>Spawn 1: <white>${template.spawn1.blockX}, ${template.spawn1.blockY}, ${template.spawn1.blockZ}",
+            "<gray>Spawn 2: <white>${template.spawn2.blockX}, ${template.spawn2.blockY}, ${template.spawn2.blockZ}"
+        )
         if (template.allowedKits.isNotEmpty()) {
-            sender.sendMessage("${ChatColor.YELLOW}Allowed Kits: ${ChatColor.WHITE}${template.allowedKits.joinToString(", ")}")
+            lines.add("<gray>Allowed Kits: <white>${template.allowedKits.joinToString(", ")}")
         }
-        sender.sendMessage("${ChatColor.GOLD}═══════════════════════════════")
-        sender.sendMessage("")
+        sendBlock(sender, lines)
     }
-    
+
     private fun deleteTemplate(sender: CommandSender, args: Array<out String>) {
         if (args.size < 3) {
-            sender.sendMessage("${ChatColor.RED}Usage: /arena template delete <name>")
+            send(sender, "<red>Usage: /arena template delete <name>")
             return
         }
-        
+
         val name = args[2]
-        
         if (plugin.improvedArenaManager.deleteTemplate(name)) {
-            sender.sendMessage("${ChatColor.GREEN}Template '$name' deleted!")
+            send(sender, "<green>Template '$name' deleted!")
         } else {
-            sender.sendMessage("${ChatColor.RED}Template '$name' not found!")
+            send(sender, "<red>Template '$name' not found!")
         }
     }
-    
+
     override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): List<String> {
         return when {
             command.name.lowercase() == "arena" && args.size == 1 -> {
@@ -370,5 +342,15 @@ class ArenaCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
             }
             else -> emptyList()
         }
+    }
+
+    private fun send(sender: CommandSender, text: String) {
+        sender.sendMessage(TextUtils.parseAuto(text))
+    }
+
+    private fun sendBlock(sender: CommandSender, lines: List<String>) {
+        sender.sendMessage(Component.empty())
+        lines.forEach { send(sender, it) }
+        sender.sendMessage(Component.empty())
     }
 }

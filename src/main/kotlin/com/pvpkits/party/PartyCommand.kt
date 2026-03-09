@@ -41,6 +41,8 @@ class PartyCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
             "list" -> handleList(player)
             "queue" -> handleQueue(player, args)
             "leave" -> handleLeaveQueue(player)
+            "info" -> handleQueueInfo(player)
+            "stats" -> handleDuelStats(player)
             else -> sendDuelHelp(player)
         }
     }
@@ -141,6 +143,26 @@ class PartyCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
     private fun handleLeaveQueue(player: Player) {
         plugin.duelManager.leaveQueue(player)
     }
+
+    private fun handleQueueInfo(player: Player) {
+        player.sendMessage(plugin.duelManager.getQueueInfo())
+    }
+
+    private fun handleDuelStats(player: Player) {
+        val stats = plugin.statsManager.getStatsIfExists(player.uniqueId)
+        if (stats == null) {
+            player.sendMessage(TextUtils.format("<yellow>No duel stats yet!"))
+            return
+        }
+
+        player.sendMessage("")
+        player.sendMessage(TextUtils.format("<gradient:#ffd700:#ffaa00><bold>DUEL STATS</bold></gradient>"))
+        player.sendMessage(TextUtils.format("<gray>Kills: <green>${stats.kills}"))
+        player.sendMessage(TextUtils.format("<gray>Deaths: <red>${stats.deaths}"))
+        player.sendMessage(TextUtils.format("<gray>K/D: <white>${stats.formattedKd}"))
+        player.sendMessage(TextUtils.format("<gray>Best Streak: <gold>${stats.bestKillstreak}"))
+        player.sendMessage("")
+    }
     
     private fun sendDuelHelp(player: Player) {
         player.sendMessage(TextUtils.format("<gradient:#ffd700:#ffaa00><bold>═══ DUEL COMMANDS ═══</bold></gradient>"))
@@ -152,6 +174,8 @@ class PartyCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
         player.sendMessage(TextUtils.format("<yellow>/duel list</yellow> <gray>- List challenges"))
         player.sendMessage(TextUtils.format("<yellow>/duel queue <kit></yellow> <gray>- Join matchmaking"))
         player.sendMessage(TextUtils.format("<yellow>/duel leave</yellow> <gray>- Leave queue"))
+        player.sendMessage(TextUtils.format("<yellow>/duel info</yellow> <gray>- Queue overview"))
+        player.sendMessage(TextUtils.format("<yellow>/duel stats</yellow> <gray>- Your duel stats"))
     }
     
     override fun onTabComplete(
@@ -164,7 +188,7 @@ class PartyCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabComp
         
         return when (command.name.lowercase()) {
             "duel" -> when (args.size) {
-                1 -> listOf("challenge", "accept", "deny", "cancel", "list", "queue", "leave")
+                1 -> listOf("challenge", "accept", "deny", "cancel", "list", "queue", "leave", "info", "stats")
                     .filter { it.startsWith(args[0], ignoreCase = true) }
                 2 -> when (args[0].lowercase()) {
                     "challenge", "accept", "deny" -> plugin.server.onlinePlayers

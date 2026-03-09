@@ -6,7 +6,7 @@
 
     <groupId>com.pvpkits</groupId>
     <artifactId>PvPKits</artifactId>
-    <version>1.0.0</version>
+    <version>0.2.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -151,6 +151,7 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <relocations>
                                 <relocation>
                                     <pattern>kotlin</pattern>

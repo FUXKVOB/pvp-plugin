@@ -1,8 +1,7 @@
 package com.pvpkits.arena
 
 import com.pvpkits.PvPKitsPlugin
-import com.pvpkits.utils.CoroutineUtils
-import kotlinx.coroutines.launch
+import com.pvpkits.utils.SchedulerUtils
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -10,64 +9,43 @@ import org.bukkit.World
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import java.io.File
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Improved Arena Manager with proper map handling
- * 
- * Features:
- * - Arena templates (master copies)
- * - Arena instances (active matches)
- * - Automatic reset after matches
- * - Block restoration
- * - Multiple instances per template
- */
 class ImprovedArenaManager(private val plugin: PvPKitsPlugin) {
-    
+
     private val templates = ConcurrentHashMap<String, ArenaTemplate>()
     private val instances = ConcurrentHashMap<String, ArenaInstance>()
-    private val playerInstances = ConcurrentHashMap<UUID, String>() // player -> instance ID
-    
+    private val playerInstances = ConcurrentHashMap<UUID, String>()
     private val templatesFile = File(plugin.dataFolder, "arena-templates.yml")
-    
-    // Block tracking for restoration
     private val arenaBlocks = ConcurrentHashMap<String, MutableMap<Location, Material>>()
-    
-    /**
-     * Load arena templates
-     */
+
     fun loadTemplates() {
         if (!templatesFile.exists()) {
             createDefaultTemplates()
             return
         }
-        
+
         val config = YamlConfiguration.loadConfiguration(templatesFile)
         val templatesSection = config.getConfigurationSection("templates") ?: return
-        
+
         templatesSection.getKeys(false).forEach { name ->
             val section = templatesSection.getConfigurationSection(name) ?: return@forEach
             val worldName = section.getString("world") ?: return@forEach
             val world = Bukkit.getWorld(worldName) ?: return@forEach
-            
+
             ArenaTemplate.loadFromConfig(name, section, world)?.let { template ->
                 templates[name.lowercase()] = template
                 plugin.logger.info("Loaded arena template: $name")
             }
         }
-        
+
         plugin.logger.info("Loaded ${templates.size} arena templates")
     }
-    
-    /**
-     * Create default templates from existing arenas
-     */
+
     private fun createDefaultTemplates() {
         val config = YamlConfiguration()
         val templatesSection = config.createSection("templates")
-        
-        // Create example template
         val exampleSection = templatesSection.createSection("example")
         exampleSection.set("display-name", "Example Arena")
         exampleSection.set("world", "world")
@@ -84,7 +62,7 @@ class ImprovedArenaManager(private val plugin: PvPKitsPlugin) {
         exampleSection.set("bounds.max.x", 20)
         exampleSection.set("bounds.max.y", 80)
         exampleSection.set("bounds.max.z", 20)
-        
+
         try {
             config.save(templatesFile)
             plugin.logger.info("Created default arena templates file")
@@ -92,178 +70,164 @@ class ImprovedArenaManager(private val plugin: PvPKitsPlugin) {
             plugin.logger.severe("Failed to create templates file: ${e.message}")
         }
     }
-    
-    /**
-     * Save templates
-     */
+
     fun saveTemplates() {
         val config = YamlConfiguration()
         val templatesSection = config.createSection("templates")
-        
+
         templates.values.forEach { template ->
             val section = templatesSection.createSection(template.name)
             template.saveToConfig(section)
         }
-        
+
         try {
             config.save(templatesFile)
         } catch (e: Exception) {
             plugin.logger.severe("Failed to save templates: ${e.message}")
         }
     }
-    
-    /**
-     * Get available arena instance for match
-     */
+
     fun getAvailableInstance(kitName: String? = null): ArenaInstance? {
-        // Find free instance
-        val freeInstance = instances.values.find { 
-            !it.inUse && 
-            it.template.enabled &&
-            (kitName == null || it.template.isKitAllowed(kitName))
+        val freeInstance = instances.values.find {
+            !it.inUse && it.template.enabled && (kitName == null || it.template.isKitAllowed(kitName))
         }
-        
         if (freeInstance != null) {
             return freeInstance
         }
-        
-        // Create new instance from template
-        val availableTemplate = templates.values.find { 
-            it.enabled && 
-            (kitName == null || it.isKitAllowed(kitName))
+
+        val availableTemplate = templates.values.find {
+            it.enabled && (kitName == null || it.isKitAllowed(kitName))
         } ?: return null
-        
+
         return createInstance(availableTemplate)
     }
-    
-    /**
-     * Create new arena instance
-     */
+
     private fun createInstance(template: ArenaTemplate): ArenaInstance {
         val instanceId = "${template.name}_${UUID.randomUUID().toString().substring(0, 8)}"
-        
-        val instance = ArenaInstance(
-            template = template,
-            instanceId = instanceId
-        )
-        
+        val instance = ArenaInstance(template = template, instanceId = instanceId)
         instances[instanceId] = instance
         arenaBlocks[instanceId] = mutableMapOf()
-        
         plugin.logger.info("Created arena instance: $instanceId from template ${template.name}")
-        
         return instance
     }
-    
-    /**
-     * Start match in instance
-     */
+
     fun startMatch(instance: ArenaInstance, player1: Player, player2: Player): Boolean {
         if (instance.inUse) return false
-        
+
         instance.markInUse()
         playerInstances[player1.uniqueId] = instance.instanceId
         playerInstances[player2.uniqueId] = instance.instanceId
-        
-        // Teleport players
+
         player1.teleport(instance.template.spawn1)
         player2.teleport(instance.template.spawn2)
-        
-        // Prepare players
+
         preparePlayer(player1)
         preparePlayer(player2)
-        
-        // Start tracking blocks
         startBlockTracking(instance)
-        
+
         plugin.logger.info("Started match in ${instance.instanceId}: ${player1.name} vs ${player2.name}")
-        
         return true
     }
-    
-    /**
-     * End match and reset arena
-     */
+
     fun endMatch(instance: ArenaInstance) {
         instance.markFree()
-        
-        // Remove player mappings
         playerInstances.entries.removeIf { it.value == instance.instanceId }
-        
-        // Reset arena blocks
-        CoroutineUtils.pluginScope.launch {
-            resetArena(instance)
-        }
-        
+        resetArena(instance)
         plugin.logger.info("Ended match in ${instance.instanceId}")
     }
-    
-    /**
-     * Start tracking block changes in arena
-     */
+
     private fun startBlockTracking(instance: ArenaInstance) {
         val blocks = arenaBlocks[instance.instanceId] ?: return
         blocks.clear()
-        
-        // Save original blocks in bounds
+
         val template = instance.template
         val world = Bukkit.getWorld(template.worldName) ?: return
-        
         val minX = template.minBounds.blockX
         val minY = template.minBounds.blockY
         val minZ = template.minBounds.blockZ
         val maxX = template.maxBounds.blockX
         val maxY = template.maxBounds.blockY
         val maxZ = template.maxBounds.blockZ
-        
-        // Save blocks (async to avoid lag)
-        CoroutineUtils.pluginScope.launch {
-            CoroutineUtils.io {
-                for (x in minX..maxX) {
-                    for (y in minY..maxY) {
-                        for (z in minZ..maxZ) {
-                            val loc = Location(world, x.toDouble(), y.toDouble(), z.toDouble())
-                            val block = world.getBlockAt(loc)
-                            blocks[loc] = block.type
-                        }
-                    }
-                }
-                plugin.logger.info("Saved ${blocks.size} blocks for ${instance.instanceId}")
-            }
+
+        processArenaBlocks(world, minX, minY, minZ, maxX, maxY, maxZ, 250, { location ->
+            blocks[location] = world.getBlockAt(location).type
+        }) {
+            plugin.logger.info("Saved ${blocks.size} blocks for ${instance.instanceId}")
         }
     }
-    
-    /**
-     * Reset arena to original state
-     */
-    private suspend fun resetArena(instance: ArenaInstance) {
+
+    private fun resetArena(instance: ArenaInstance) {
         val blocks = arenaBlocks[instance.instanceId] ?: return
-        
-        CoroutineUtils.io {
-            var restored = 0
-            blocks.forEach { (loc, material) ->
+        val entries = blocks.entries.toList()
+        var index = 0
+        var restored = 0
+        val batchSize = 250
+
+        val taskRef = arrayOfNulls<org.bukkit.scheduler.BukkitTask>(1)
+        taskRef[0] = SchedulerUtils.runTaskTimer(plugin, 0L, 1L, Runnable {
+            val endIndex = (index + batchSize).coerceAtMost(entries.size)
+            while (index < endIndex) {
+                val (loc, material) = entries[index]
                 val block = loc.block
                 if (block.type != material) {
                     block.type = material
                     restored++
                 }
+                index++
             }
-            
-            plugin.logger.info("Reset ${instance.instanceId}: restored $restored blocks")
-            
-            // Clear tracking
+
+            if (index < entries.size) {
+                return@Runnable
+            }
+
             blocks.clear()
-            
-            // Reset instance counter if needed
             if (instance.needsReset()) {
                 instance.reset()
             }
-        }
+            plugin.logger.info("Reset ${instance.instanceId}: restored $restored blocks")
+            taskRef[0]?.cancel()
+        })
     }
-    
-    /**
-     * Prepare player for match
-     */
+
+    private fun processArenaBlocks(
+        world: World,
+        minX: Int,
+        minY: Int,
+        minZ: Int,
+        maxX: Int,
+        maxY: Int,
+        maxZ: Int,
+        batchSize: Int,
+        consumer: (Location) -> Unit,
+        onComplete: () -> Unit
+    ) {
+        val locations = ArrayList<Location>((maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1))
+        for (x in minX..maxX) {
+            for (y in minY..maxY) {
+                for (z in minZ..maxZ) {
+                    locations.add(Location(world, x.toDouble(), y.toDouble(), z.toDouble()))
+                }
+            }
+        }
+
+        var index = 0
+        val taskRef = arrayOfNulls<org.bukkit.scheduler.BukkitTask>(1)
+        taskRef[0] = SchedulerUtils.runTaskTimer(plugin, 0L, 1L, Runnable {
+            val endIndex = (index + batchSize).coerceAtMost(locations.size)
+            while (index < endIndex) {
+                consumer(locations[index])
+                index++
+            }
+
+            if (index < locations.size) {
+                return@Runnable
+            }
+
+            onComplete()
+            taskRef[0]?.cancel()
+        })
+    }
+
     private fun preparePlayer(player: Player) {
         player.health = player.maxHealth
         player.foodLevel = 20
@@ -272,25 +236,14 @@ class ImprovedArenaManager(private val plugin: PvPKitsPlugin) {
         player.fallDistance = 0f
         player.activePotionEffects.forEach { player.removePotionEffect(it.type) }
     }
-    
-    /**
-     * Get player's current instance
-     */
+
     fun getPlayerInstance(player: Player): ArenaInstance? {
         val instanceId = playerInstances[player.uniqueId] ?: return null
         return instances[instanceId]
     }
-    
-    /**
-     * Check if player is in arena
-     */
-    fun isInArena(player: Player): Boolean {
-        return playerInstances.containsKey(player.uniqueId)
-    }
-    
-    /**
-     * Create arena template
-     */
+
+    fun isInArena(player: Player): Boolean = playerInstances.containsKey(player.uniqueId)
+
     fun createTemplate(
         name: String,
         displayName: String,
@@ -309,55 +262,33 @@ class ImprovedArenaManager(private val plugin: PvPKitsPlugin) {
             minBounds = minBounds,
             maxBounds = maxBounds
         )
-        
+
         templates[name.lowercase()] = template
         saveTemplates()
-        
         plugin.logger.info("Created arena template: $name")
-        
         return template
     }
-    
-    /**
-     * Get all templates
-     */
+
     fun getAllTemplates(): Collection<ArenaTemplate> = templates.values
-    
-    /**
-     * Get template by name
-     */
+
     fun getTemplate(name: String): ArenaTemplate? = templates[name.lowercase()]
-    
-    /**
-     * Delete template
-     */
+
     fun deleteTemplate(name: String): Boolean {
         val template = templates.remove(name.lowercase()) ?: return false
-        
-        // Remove all instances of this template
         instances.values.removeIf { it.template.name == name }
-        
         saveTemplates()
         return true
     }
-    
-    /**
-     * Cleanup player
-     */
+
     fun cleanupPlayer(uuid: UUID) {
         val instanceId = playerInstances.remove(uuid) ?: return
         val instance = instances[instanceId] ?: return
-        
-        // If no more players, end match
         val remainingPlayers = playerInstances.values.count { it == instanceId }
         if (remainingPlayers == 0) {
             endMatch(instance)
         }
     }
-    
-    /**
-     * Get memory stats
-     */
+
     fun getMemoryStats(): Map<String, Any> {
         return mapOf(
             "templates" to templates.size,

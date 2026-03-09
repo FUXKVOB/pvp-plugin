@@ -99,6 +99,23 @@ class DatabaseManager(private val plugin: PvPKitsPlugin) {
                 statement.executeUpdate("""
                     CREATE INDEX IF NOT EXISTS idx_best_killstreak ON player_stats(best_killstreak DESC)
                 """)
+
+                statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS elo_ratings (
+                        uuid TEXT PRIMARY KEY,
+                        rating INTEGER DEFAULT 1000,
+                        wins INTEGER DEFAULT 0,
+                        losses INTEGER DEFAULT 0,
+                        win_streak INTEGER DEFAULT 0,
+                        best_win_streak INTEGER DEFAULT 0,
+                        rank TEXT DEFAULT 'UNRANKED',
+                        last_updated INTEGER
+                    )
+                """)
+
+                statement.executeUpdate("""
+                    CREATE INDEX IF NOT EXISTS idx_elo_rating ON elo_ratings(rating DESC)
+                """)
             }
         }
     }

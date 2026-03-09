@@ -6,6 +6,7 @@ build/
 # Maven
 target/
 !target/PvPKits-*.jar
+dependency-reduced-pom.xml
 
 # IDE
 .idea/

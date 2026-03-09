@@ -3,7 +3,6 @@ package com.pvpkits.database
 import com.pvpkits.PvPKitsPlugin
 import com.pvpkits.utils.CoroutineUtils
 import kotlinx.coroutines.launch
-import java.sql.Connection
 import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -213,18 +212,18 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
         if (updates.isEmpty()) return
         
         CoroutineUtils.io {
-            val conn = plugin.statsManager.getConnection()
+            val conn = plugin.databaseManager.getConnection()
             conn.use {
                 it.autoCommit = false
                 
                 try {
                     val stmt = it.prepareStatement("""
-                        INSERT INTO stats (uuid, player_name, kills, deaths, last_seen)
+                        INSERT INTO player_stats (uuid, player_name, kills, deaths, last_updated)
                         VALUES (?, ?, ?, ?, ?)
                         ON CONFLICT(uuid) DO UPDATE SET
                             kills = kills + excluded.kills,
                             deaths = deaths + excluded.deaths,
-                            last_seen = excluded.last_seen
+                            last_updated = excluded.last_updated
                     """)
                     
                     updates.forEach { update ->
@@ -264,7 +263,7 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
         if (updates.isEmpty()) return
         
         CoroutineUtils.io {
-            plugin.enhancedStatsManager.getConnection().use { conn ->
+            plugin.databaseManager.getConnection().use { conn ->
                 conn.autoCommit = false
                 
                 try {
@@ -320,7 +319,7 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
         if (entries.isEmpty()) return
         
         CoroutineUtils.io {
-            plugin.enhancedStatsManager.getConnection().use { conn ->
+            plugin.databaseManager.getConnection().use { conn ->
                 conn.autoCommit = false
                 
                 try {
@@ -372,7 +371,7 @@ class BatchStatsManager(private val plugin: PvPKitsPlugin) {
         if (updates.isEmpty()) return
         
         CoroutineUtils.io {
-            plugin.enhancedStatsManager.getConnection().use { conn ->
+            plugin.databaseManager.getConnection().use { conn ->
                 conn.autoCommit = false
                 
                 try {
