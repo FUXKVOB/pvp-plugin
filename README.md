@@ -1,4 +1,4 @@
-# PvPKits Plugin v1.0
+# PvPKits Plugin v0.2.0
 
 🎮 Продвинутый PvP плагин с китами для Minecraft 1.21.8 на Kotlin 2.3 + Java 21
 
