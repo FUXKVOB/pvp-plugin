@@ -2,8 +2,8 @@ package com.pvpkits
 
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.Registry
 import org.bukkit.configuration.file.YamlConfiguration
-import org.bukkit.enchantments.Enchantment
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.ItemMeta
 import java.io.File
@@ -76,8 +76,7 @@ class KitManager(private val plugin: PvPKitsPlugin) {
                 val enchantName = match.groupValues[1]
                 val level = match.groupValues[2].toIntOrNull() ?: 1
                 
-                val enchant = Enchantment.getByName(enchantName.uppercase()) 
-                    ?: Enchantment.getByKey(org.bukkit.NamespacedKey.minecraft(enchantName))
+                val enchant = Registry.ENCHANTMENT.get(org.bukkit.NamespacedKey.minecraft(enchantName))
                 
                 if (enchant != null) {
                     meta.addEnchant(enchant, level, true)

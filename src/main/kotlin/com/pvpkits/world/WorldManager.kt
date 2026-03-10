@@ -1,6 +1,7 @@
 package com.pvpkits.world
 
 import com.pvpkits.PvPKitsPlugin
+import com.pvpkits.utils.HealthUtils
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.World
@@ -312,7 +313,7 @@ class WorldManager(private val plugin: PvPKitsPlugin) {
         player.teleport(spawn)
         player.gameMode = org.bukkit.GameMode.ADVENTURE
         player.inventory.clear()
-        player.health = player.maxHealth
+        HealthUtils.reset(player)
         player.foodLevel = 20
         
         return true

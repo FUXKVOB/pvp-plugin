@@ -1,6 +1,7 @@
 package com.pvpkits.nametag
 
 import com.pvpkits.PvPKitsPlugin
+import com.pvpkits.utils.HealthUtils
 import com.pvpkits.utils.SchedulerUtils
 import com.pvpkits.utils.TextUtils
 import net.kyori.adventure.text.Component
@@ -44,7 +45,7 @@ class NametagManager(private val plugin: PvPKitsPlugin) {
     
     private fun updatePlayerNametag(player: Player) {
         val health = player.health.toInt()
-        val maxHealth = player.maxHealth.toInt()
+        val maxHealth = HealthUtils.maxHealth(player).toInt()
         val ping = getPing(player)
         
         // Update for all other players

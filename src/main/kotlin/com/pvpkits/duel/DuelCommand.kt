@@ -101,7 +101,7 @@ class DuelCommand(private val plugin: PvPKitsPlugin) : CommandExecutor, TabCompl
     private fun openDuelKitMenu(player: Player) {
         val kits = plugin.kitManager.getAllKits().toList()
         val rows = ((kits.size + 8) / 9).coerceAtLeast(1).coerceAtMost(6)
-        val inventory = Bukkit.createInventory(null, rows * 9, TextUtils.legacySection("<gold><bold>Select Duel Kit"))
+        val inventory = Bukkit.createInventory(null, rows * 9, TextUtils.parseAuto("<gold><bold>Select Duel Kit"))
 
         kits.forEachIndexed { index, kit ->
             val item = ItemStack(kit.icon?.let { Material.getMaterial(it) } ?: Material.CHEST)

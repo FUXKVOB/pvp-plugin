@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.0 - 2026-03-10
+
+- Upgraded the project release version to `0.3.0`.
+- Continued the Paper 1.21.8 modernization pass with safer Adventure-based messages, titles, and action bars.
+- Replaced several deprecated health resets with attribute-based handling to reduce API drift on newer Paper builds.
+- Modernized duel and stats UI flows to keep behavior intact while reducing legacy formatting usage.
+- Updated release references across the plugin project and bundled manager so deployment targets point to the current jar name.
+
 ## v0.2.0 - 2026-03-09
 
 - Upgraded the plugin release version to `0.2.0`.
@@ -14,5 +22,5 @@
 
 ## Notes
 
-- Release artifact: `target/PvPKits-0.2.0.jar`
+- Release artifact: `target/PvPKits-0.3.0.jar`
 - Build verified with Java 21 and Maven wrapper.

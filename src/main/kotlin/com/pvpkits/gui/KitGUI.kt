@@ -37,7 +37,7 @@ class KitGUI(private val plugin: PvPKitsPlugin) {
         playerPages[player] = currentPage
 
         val rows = plugin.config.getInt("gui.rows", 6)
-        val title = TextUtils.legacySection(plugin.config.getString("gui.title") ?: "<gold><bold>PvP Kits")
+        val title = TextUtils.parseAuto(plugin.config.getString("gui.title") ?: "<gold><bold>PvP Kits")
         val inventory = Bukkit.createInventory(KitMenuHolder(), rows * 9, title)
 
         fillBorders(inventory, rows)

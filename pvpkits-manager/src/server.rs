@@ -76,8 +76,8 @@ impl ServerManager {
     }
 
     pub fn deploy_plugin(&self, plugin_path: &str, server_path: &str) {
-        let jar_path = format!("{}/target/PvPKits-1.0.0.jar", plugin_path);
-        let dest_path = format!("{}/plugins/PvPKits-1.0.0.jar", server_path);
+        let jar_path = format!("{}/target/PvPKits-0.3.0.jar", plugin_path);
+        let dest_path = format!("{}/plugins/PvPKits-0.3.0.jar", server_path);
 
         match std::fs::copy(&jar_path, &dest_path) {
             Ok(_) => println!("Плагин установлен в {}", dest_path),

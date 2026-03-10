@@ -1,6 +1,7 @@
 package com.pvpkits.arena
 
 import com.pvpkits.PvPKitsPlugin
+import com.pvpkits.utils.HealthUtils
 import com.pvpkits.utils.SchedulerUtils
 import org.bukkit.Bukkit
 import org.bukkit.Location
@@ -229,7 +230,7 @@ class ImprovedArenaManager(private val plugin: PvPKitsPlugin) {
     }
 
     private fun preparePlayer(player: Player) {
-        player.health = player.maxHealth
+        HealthUtils.reset(player)
         player.foodLevel = 20
         player.saturation = 20f
         player.fireTicks = 0

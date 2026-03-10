@@ -18,7 +18,7 @@ fn main() -> Result<(), eframe::Error> {
     };
 
     eframe::run_native(
-        "PvPKits Server Manager v1.0",
+        "PvPKits Server Manager v0.3.0",
         options,
         Box::new(|cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
